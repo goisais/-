@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}言い訳裁判 - ログイン{% endblock %}
+{% block content %}
+<div class="phone-frame">
+  <div class="screen">
+
+    <div style="padding: 28px 20px 10px; text-align: center;">
+      <i class="ti ti-gavel" style="font-size: 32px; color: var(--gold);"></i>
+      <div style="font-size: 18px; font-weight: 500; color: var(--cream); margin-top: 8px;">言い訳裁判</div>
+      <div style="font-size: 11px; color: var(--text-cream-muted); margin-top: 4px;">くだらないほど盛り上がる、模擬裁判エンタメ</div>
+    </div>
+
+    <form action="/host/setup" method="get">
+      <div class="field">
+        <label for="username">お名前</label>
+        <input type="text" id="username" name="username" placeholder="例：たかし" required />
+      </div>
+
+      <div class="section-pad" style="padding-top: 18px; padding-bottom: 4px;">
+        <div class="helper-text" style="margin-bottom: 8px;">はじめかたを選んでね</div>
+
+        <!-- ホストとして開廷する: /host/setup へ遷移 -->
+        <button type="submit" class="option-card host">
+          <div class="icon-circle" style="background: var(--danger);">
+            <i class="ti ti-gavel" style="font-size: 19px; color: var(--on-danger);"></i>
+          </div>
+          <div>
+            <div style="font-size: 14px; font-weight: 500; color: var(--text-dark);">ホストとして開廷する</div>
+            <div style="font-size: 11px; color: var(--text-brown-muted); margin-top: 2px;">裁判を作って参加者を招待する</div>
+          </div>
+        </button>
+      </div>
+    </form>
+
+    <!-- 参加者として参加する: 招待コードを入力して /join/waiting へ -->
+    <form action="/join/waiting" method="get">
+      <div class="section-pad" style="padding-top: 0;">
+        <button type="submit" class="option-card guest">
+          <div class="icon-circle" style="background: var(--bronze);">
+            <i class="ti ti-door-enter" style="font-size: 19px; color: var(--cream);"></i>
+          </div>
+          <div>
+            <div style="font-size: 14px; font-weight: 500; color: var(--cream);">参加者として参加する</div>
+            <div style="font-size: 11px; color: var(--text-cream-muted); margin-top: 2px;">招待コードを入力して入室する</div>
+          </div>
+        </button>
+
+        <input type="text" name="invite_code" placeholder="招待コードを入力（例：8391）"
+               style="width: 100%; background: var(--cream); border: 1px solid var(--wood-dark); border-radius: 6px; padding: 9px 12px; font-size: 13px; color: var(--text-dark); margin-top: 4px;" />
+      </div>
+    </form>
+
+    <div style="height: 18px;"></div>
+  </div>
+</div>
+{% endblock %}

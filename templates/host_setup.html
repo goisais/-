@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}言い訳裁判 - 開廷準備{% endblock %}
+{% block content %}
+<div class="phone-frame">
+  <div class="screen">
+
+    <div class="screen-header">
+      <div class="brand">
+        <i class="ti ti-gavel"></i>
+        <span>開廷準備</span>
+      </div>
+      <div style="font-size: 10px; letter-spacing: 1px; color: var(--text-cream-muted); margin-top: 3px;">新しい裁判を開く</div>
+    </div>
+
+    <form action="/role-reveal" method="get">
+      <div class="field">
+        <label for="case_name">裁判名</label>
+        <input type="text" id="case_name" name="case_name" placeholder="例：電車寝坊事件" />
+      </div>
+
+      <div class="field">
+        <label>被告人を選ぶ</label>
+        <div class="chip-row">
+          {% for p in participants %}
+          <label class="chip {% if p.role == 'defendant' %}chip-selected{% else %}chip-muted{% endif %}">
+            <input type="radio" name="defendant" value="{{ p.name }}" {% if p.role == 'defendant' %}checked{% endif %} style="display:none;" />
+            <span class="avatar" style="background: {% if p.role == 'defendant' %}var(--danger){% else %}var(--bronze){% endif %};">{{ p.initial }}</span>
+            {{ p.name }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="field">
+        <label>参加者（傍聴席）</label>
+        <div class="chip-row">
+          {% for o in others %}
+          <span class="chip">
+            <span class="avatar" style="background: var(--text-brown-muted);">{{ o.initial }}</span>
+            {{ o.name }}
+          </span>
+          {% endfor %}
+          <button type="button" class="chip chip-add" onclick="alert('参加者追加モーダルをここに実装')">
+            <i class="ti ti-plus" style="font-size: 13px;"></i>追加
+          </button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 10px; color: var(--text-cream-muted);">
+          <i class="ti ti-dice-5" style="font-size: 13px;"></i>
+          検察官・弁護人は参加者の中からガチャで自動決定されます
+        </div>
+      </div>
+
+      <div class="field" style="padding-top: 16px;">
+        <label>フェーズごとの制限時間</label>
+        {% for ph in phases %}
+        <div class="time-setting-row">
+          <div class="setting-label">
+            <i class="ti {{ ph.icon }}" style="font-size: 15px; color: {% if ph.key == 'defense' %}var(--accent-blue){% else %}var(--danger-dark){% endif %};"></i>
+            {{ ph.label }}
+          </div>
+          <div class="stepper">
+            <button type="button" onclick="adjustTime(this, -1)">−</button>
+            <span class="value" data-seconds="{{ ph.duration }}">{{ ph.duration }}</span>
+            <button type="button" onclick="adjustTime(this, 1)">＋</button>
+            <input type="hidden" name="phase_{{ ph.key }}" value="{{ ph.duration }}" />
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="section-pad">
+        <button type="submit" class="btn-primary">
+          <i class="ti ti-gavel" style="font-size: 17px;"></i>
+          開廷する
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+{% endblock %}
