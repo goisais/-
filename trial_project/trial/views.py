@@ -26,6 +26,7 @@ from trial.state import (
     format_mmss,
     parse_mmss_to_seconds,
     start_trial,
+    reset_for_new_round,
 )
 from trial.sockets import notify_participants_updated, notify_trial_started
 
@@ -45,13 +46,29 @@ def enter(request):
     if not username:
         return redirect("index")
 
-    request.session["username"] = username
-
     if role == "host":
+        request.session["username"] = username
         request.session["is_host"] = True
+        # ホストが「ホストとして開廷する」を押すたびに、新しい部屋(コード)として作り直す
+        reset_for_new_round()
         return redirect("host_setup")
 
-    # 参加者として参加
+    # 参加者として参加する場合は、招待コードの一致を確認する
+    entered_code = (request.POST.get("access_code") or "").strip()
+    if not entered_code:
+        return render(
+            request,
+            "login.html",
+            {"error": "コード入力しないと参加できません", "username": username},
+        )
+    if not lobby_state["access_code"] or entered_code != lobby_state["access_code"]:
+        return render(
+            request,
+            "login.html",
+            {"error": "コードが違います。ホストに確認してください", "username": username},
+        )
+
+    request.session["username"] = username
     request.session["is_host"] = False
     if username not in lobby_state["participants"]:
         lobby_state["participants"].append(username)
@@ -72,6 +89,7 @@ def host_setup(request):
         {
             "participants": lobby_state["participants"],
             "phases": phases,
+            "access_code": lobby_state["access_code"],
         },
     )
 

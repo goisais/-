@@ -8,6 +8,10 @@
 
 import random
 
+def generate_access_code():
+    return f"{random.randint(0, 9999):04d}"
+
+
 DEFAULT_PHASES = [
     {"key": "defendant", "label": "被告人陳述", "icon": "ti-microphone"},
     {"key": "prosecutor", "label": "検察質問", "icon": "ti-shield-half-filled"},
@@ -44,6 +48,7 @@ ROLE_META = {
 
 def make_initial_state():
     return {
+        "access_code": "",  # ホストが開廷準備を始めるたびに新しく発行される4桁コード
         "participants": [],  # 参加者名の一覧（順番 = 参加した順）
         "case_name": "",
         "defendant": None,
@@ -77,6 +82,15 @@ def parse_mmss_to_seconds(text, fallback=90):
         return max(10, int(text))
     except ValueError:
         return fallback
+
+
+def reset_for_new_round():
+    """ホストが「ホストとして開廷する」を押すたびに、新しい部屋として作り直す。
+    前回の参加者やコードは引き継がない。"""
+    fresh = make_initial_state()
+    fresh["access_code"] = generate_access_code()
+    lobby_state.update(fresh)
+    return lobby_state["access_code"]
 
 
 def start_trial(case_name, defendant):
