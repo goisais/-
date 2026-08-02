@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}言い訳裁判 - 開廷準備{% endblock %}
+{% block content %}
+<div class="phone-frame">
+  <div class="screen">
+
+    <div class="screen-header">
+      <div class="brand">
+        <i class="ti ti-gavel"></i>
+        <span>開廷準備</span>
+      </div>
+      <div style="font-size: 10px; letter-spacing: 1px; color: var(--text-cream-muted); margin-top: 3px;">新しい裁判を開く</div>
+    </div>
+
+    <form action="{{ url_for('host_setup_start') }}" method="post" id="setup-form">
+      <div class="field">
+        <label for="case_name">裁判名</label>
+        <input type="text" id="case_name" name="case_name" placeholder="例：電車寝坊事件" />
+      </div>
+
+      <!-- 参加者は事前に固定せず、ログイン画面で「参加者として参加する」を押した人が
+           リアルタイムでここに反映される。被告人はこの一覧から選ぶだけ。 -->
+      <div class="field">
+        <label>参加者（この中から被告人を選ぶ）</label>
+        <div class="chip-row" id="participant-list">
+          {% for p in participants %}
+          <span class="chip chip-muted" data-name="{{ p }}" onclick="selectDefendant(this)">{{ p }}</span>
+          {% endfor %}
+        </div>
+        <div id="no-participants" class="helper-text" style="text-align: left; margin-top: 6px; {% if participants %}display:none;{% endif %}">
+          まだ誰も参加していません。参加者にログイン画面で名前を入れて「参加者として参加する」を押してもらってください。
+        </div>
+        <input type="hidden" name="defendant" id="defendant-input" required />
+        <div style="display: flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 10px; color: var(--text-cream-muted);">
+          <i class="ti ti-dice-5" style="font-size: 13px;"></i>
+          検察官・弁護人は被告人以外の参加者からガチャで自動決定されます
+        </div>
+      </div>
+
+      <div class="field" style="padding-top: 16px;">
+        <label>フェーズごとの制限時間</label>
+        {% for ph in phases %}
+        <div class="time-setting-row">
+          <div class="setting-label">
+            <i class="ti {{ ph.icon }}" style="font-size: 15px; color: {% if ph.key == 'defense' %}var(--accent-blue){% else %}var(--danger-dark){% endif %};"></i>
+            {{ ph.label }}
+          </div>
+          <div class="stepper">
+            <button type="button" onclick="adjustTime(this, -1)">−</button>
+            <span class="value">{{ '%d:%02d' % (default_durations[ph.key] // 60, default_durations[ph.key] % 60) }}</span>
+            <button type="button" onclick="adjustTime(this, 1)">＋</button>
+            <input type="hidden" name="phase_{{ ph.key }}" value="{{ '%d:%02d' % (default_durations[ph.key] // 60, default_durations[ph.key] % 60) }}" />
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="section-pad">
+        <button type="submit" class="btn-primary">
+          <i class="ti ti-gavel" style="font-size: 17px;"></i>
+          開廷する
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<script>
+  const socket = io();
+  socket.emit("join_lobby");
+
+  let selectedDefendant = null;
+
+  function renderParticipants(list) {
+    const container = document.getElementById("participant-list");
+    const emptyNote = document.getElementById("no-participants");
+    container.innerHTML = "";
+    list.forEach((name) => {
+      const chip = document.createElement("span");
+      chip.className = "chip chip-muted";
+      chip.dataset.name = name;
+      chip.textContent = name;
+      chip.onclick = () => selectDefendant(chip);
+      if (name === selectedDefendant) {
+        chip.className = "chip chip-selected";
+      }
+      container.appendChild(chip);
+    });
+    emptyNote.style.display = list.length ? "none" : "block";
+  }
+
+  function selectDefendant(chipEl) {
+    selectedDefendant = chipEl.dataset.name;
+    document.getElementById("defendant-input").value = selectedDefendant;
+    document.querySelectorAll("#participant-list .chip").forEach((c) => {
+      c.className = c.dataset.name === selectedDefendant ? "chip chip-selected" : "chip chip-muted";
+    });
+  }
+
+  socket.on("participants_updated", (data) => {
+    renderParticipants(data.participants || []);
+  });
+
+  document.getElementById("setup-form").addEventListener("submit", (e) => {
+    if (!selectedDefendant) {
+      e.preventDefault();
+      alert("被告人を参加者の中から選んでください");
+    }
+  });
+</script>
+{% endblock %}

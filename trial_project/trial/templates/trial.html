@@ -12,13 +12,14 @@
         </div>
         <div class="live-badge">
           <span class="live-dot"></span>
-          開廷中 {{ viewer_count }}
+          開廷中 <span id="viewer-count">{{ viewer_count }}</span>
         </div>
       </div>
-      <div class="subtitle">第14回法廷 ー {{ case_name }}</div>
+      <div class="subtitle">{{ case_name }}</div>
     </div>
 
-    <!-- フェーズタイマー: id="phase-*" は script.js のカウントダウンが参照する -->
+    <!-- フェーズタイマー: 開廷準備で設定した秒数がそのまま表示される。
+         自動切り替え・全員同期は次のフェーズで対応予定。 -->
     <div class="phase-row">
       {% for ph in phases %}
       <div class="phase-card {% if ph.active %}active{% endif %}" id="phase-{{ loop.index0 }}">
@@ -41,7 +42,7 @@
         <div class="placeholder">
           <i class="ti ti-user"></i>
         </div>
-        <div class="tag-defendant">被告人</div>
+        <div class="tag-defendant">被告人：{{ defendant_name }}</div>
         <div class="tag-evidence">証拠A</div>
 
         <div class="gauge-row">
@@ -59,11 +60,11 @@
           </div>
         </div>
 
-        <div class="excuse-caption">「{{ excuse_text }}」</div>
+        <div class="excuse-caption">{{ excuse_text }}</div>
       </div>
     </div>
 
-    <!-- 検察官・弁護人ガチャ結果 -->
+    <!-- 検察官・弁護人ガチャ結果（被告人以外の参加者からサーバー側で抽選済み） -->
     <div class="gacha-row">
       <div class="gacha-badge">
         <i class="ti ti-shield-half-filled" style="font-size: 18px; color: var(--danger-dark);"></i>
@@ -81,15 +82,15 @@
       </div>
     </div>
 
-    <!-- 異議ありボタン: script.js でクリックごとにカウントアップ -->
+    <!-- 異議ありボタン: サーバーにイベントを送って、全員の画面のカウントを同時に更新 -->
     <div class="objection-btn">
-      <button id="objection-button" onclick="incrementObjection()">
+      <button id="objection-button" onclick="sendObjection()">
         <i class="ti ti-gavel"></i>
         異議あり！ <span class="count" id="objection-count">{{ objection_count }}</span>
       </button>
     </div>
 
-    <!-- 常時表示のコメント欄。ホスト/参加者どちらの画面でも同じ -->
+    <!-- 常時表示のコメント欄。ホスト/参加者どちらの画面でも同じで、全員にリアルタイム配信される -->
     <div class="comment-box">
       <div class="comment-feed" id="comment-feed">
         <div class="feed-label">傍聴席コメント</div>
@@ -98,14 +99,14 @@
         {% endfor %}
       </div>
       <div class="comment-input-row">
-        <input type="text" id="comment-input" placeholder="コメントを入力…" onkeydown="if(event.key==='Enter') submitComment();" />
-        <button aria-label="送信" onclick="submitComment()">
+        <input type="text" id="comment-input" placeholder="コメントを入力…" onkeydown="if(event.key==='Enter') sendComment();" />
+        <button aria-label="送信" onclick="sendComment()">
           <i class="ti ti-send-2"></i>
         </button>
       </div>
     </div>
 
-    <!-- 判決 -->
+    <!-- 判決: ラスト30秒だけ投票を開放する仕組みは次のフェーズで対応予定。今は表示のみ -->
     <div class="verdict-box">
       <div class="verdict-title">判決</div>
       <div class="verdict-labels">
@@ -119,4 +120,37 @@
 
   </div>
 </div>
+
+<script>
+  const socket = io();
+  socket.emit("join_trial");
+
+  function sendObjection() {
+    socket.emit("objection");
+  }
+
+  socket.on("objection_update", (data) => {
+    document.getElementById("objection-count").textContent = data.count;
+  });
+
+  function sendComment() {
+    const input = document.getElementById("comment-input");
+    const text = input.value.trim();
+    if (!text) return;
+    socket.emit("comment_send", { text });
+    input.value = "";
+  }
+
+  socket.on("comment_new", (comment) => {
+    const feed = document.getElementById("comment-feed");
+    const item = document.createElement("div");
+    item.className = "comment-item";
+    const strong = document.createElement("strong");
+    strong.textContent = comment.name + "：";
+    item.appendChild(strong);
+    item.appendChild(document.createTextNode(comment.text));
+    feed.appendChild(item);
+    feed.scrollTop = feed.scrollHeight;
+  });
+</script>
 {% endblock %}

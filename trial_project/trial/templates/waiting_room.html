@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}言い訳裁判 - 待機中{% endblock %}
+{% block content %}
+<div class="phone-frame">
+  <div class="screen">
+
+    <div class="screen-header" style="text-align: center;">
+      <div style="font-size: 10px; letter-spacing: 2px; color: var(--text-cream-muted);">WAITING ROOM</div>
+      <div style="font-size: 16px; font-weight: 500; color: var(--cream); margin-top: 2px;">開廷をお待ちください</div>
+    </div>
+
+    <div class="waiting-center">
+      <i class="ti ti-hourglass icon"></i>
+      <div class="headline">ようこそ、{{ my_name }}さん</div>
+      <div class="sub">ホストが準備を整えています…</div>
+    </div>
+
+    <div class="field">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-size: 10px; letter-spacing: 1px; color: var(--wood-light);">入室中の参加者</span>
+        <span style="font-size: 11px; color: var(--text-cream-muted);" id="participant-count">{{ participants|length }}人</span>
+      </div>
+      <div class="chip-row" id="participant-list">
+        {% for p in participants %}
+        <span class="chip {% if p == my_name %}chip-muted{% endif %}">{% if p == my_name %}あなた（{{ p }}）{% else %}{{ p }}{% endif %}</span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="section-pad">
+      <div class="helper-text">ホストが「開廷する」を押すと自動で始まります</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const socket = io();
+  socket.emit("join_lobby");
+
+  const myName = {{ my_name | tojson }};
+
+  function renderParticipants(list) {
+    const container = document.getElementById("participant-list");
+    const countEl = document.getElementById("participant-count");
+    container.innerHTML = "";
+    list.forEach((name) => {
+      const chip = document.createElement("span");
+      chip.className = "chip" + (name === myName ? " chip-muted" : "");
+      chip.textContent = name === myName ? `あなた（${name}）` : name;
+      container.appendChild(chip);
+    });
+    countEl.textContent = list.length + "人";
+  }
+
+  socket.on("participants_updated", (data) => {
+    renderParticipants(data.participants || []);
+  });
+
+  // ホストが「開廷する」を押した瞬間、自動で役割発表画面へ移動する
+  socket.on("trial_started", () => {
+    window.location.href = "/role-reveal";
+  });
+</script>
+{% endblock %}
