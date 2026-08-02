@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -5,10 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}言い訳裁判{% endblock %}</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="stylesheet" href="{% static 'trial/css/style.css' %}">
 </head>
 <body>
   {% block content %}{% endblock %}
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <script src="{% static 'trial/js/script.js' %}"></script>
 </body>
 </html>
