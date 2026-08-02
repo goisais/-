@@ -12,7 +12,8 @@
 
     <!-- 名前入力とホスト/参加者の選択を1つのフォームにまとめている。
          誰でも名前を入れれば参加できる仕組みなので、事前登録や固定メンバーは無し。 -->
-    <form action="{{ url_for('enter') }}" method="post">
+    <form action="{% url 'enter' %}" method="post">
+      {% csrf_token %}
       <div class="field">
         <label for="username">お名前</label>
         <input type="text" id="username" name="username" placeholder="例：たかし" required />

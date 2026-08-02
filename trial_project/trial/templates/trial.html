@@ -22,7 +22,7 @@
          自動切り替え・全員同期は次のフェーズで対応予定。 -->
     <div class="phase-row">
       {% for ph in phases %}
-      <div class="phase-card {% if ph.active %}active{% endif %}" id="phase-{{ loop.index0 }}">
+      <div class="phase-card {% if ph.active %}active{% endif %}" id="phase-{{ forloop.counter0 }}">
         <div class="phase-label">
           <i class="ti {{ ph.icon }}"></i>{{ ph.label }}
         </div>
@@ -125,6 +125,8 @@
   const socket = io();
   socket.emit("join_trial");
 
+  const myName = "{{ my_name|escapejs }}";
+
   function sendObjection() {
     socket.emit("objection");
   }
@@ -137,7 +139,7 @@
     const input = document.getElementById("comment-input");
     const text = input.value.trim();
     if (!text) return;
-    socket.emit("comment_send", { text });
+    socket.emit("comment_send", { text, name: myName });
     input.value = "";
   }
 

@@ -38,7 +38,7 @@
   const socket = io();
   socket.emit("join_lobby");
 
-  const myName = {{ my_name | tojson }};
+  const myName = "{{ my_name|escapejs }}";
 
   function renderParticipants(list) {
     const container = document.getElementById("participant-list");

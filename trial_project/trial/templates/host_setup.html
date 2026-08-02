@@ -12,7 +12,8 @@
       <div style="font-size: 10px; letter-spacing: 1px; color: var(--text-cream-muted); margin-top: 3px;">新しい裁判を開く</div>
     </div>
 
-    <form action="{{ url_for('host_setup_start') }}" method="post" id="setup-form">
+    <form action="{% url 'host_setup_start' %}" method="post" id="setup-form">
+      {% csrf_token %}
       <div class="field">
         <label for="case_name">裁判名</label>
         <input type="text" id="case_name" name="case_name" placeholder="例：電車寝坊事件" />
@@ -47,9 +48,9 @@
           </div>
           <div class="stepper">
             <button type="button" onclick="adjustTime(this, -1)">−</button>
-            <span class="value">{{ '%d:%02d' % (default_durations[ph.key] // 60, default_durations[ph.key] % 60) }}</span>
+            <span class="value">{{ ph.duration_display }}</span>
             <button type="button" onclick="adjustTime(this, 1)">＋</button>
-            <input type="hidden" name="phase_{{ ph.key }}" value="{{ '%d:%02d' % (default_durations[ph.key] // 60, default_durations[ph.key] % 60) }}" />
+            <input type="hidden" name="phase_{{ ph.key }}" value="{{ ph.duration_display }}" />
           </div>
         </div>
         {% endfor %}
