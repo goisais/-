@@ -107,13 +107,21 @@
     ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
 
     loadFace((faceImg, sx, sy, sw, sh) => {
+      // Safariはclip()とfilterを同時に使うとfilterだけ無視されることがあるため、
+      // 先にクリップ無しのオフスクリーンcanvasでセピア加工してから、
+      // 加工済みの画像を枠にクリップして貼る(filterを使わない単純なdrawImageにする)
+      const off = document.createElement("canvas");
+      off.width = Math.max(1, Math.round(frameW));
+      off.height = Math.max(1, Math.round(frameH));
+      const offCtx = off.getContext("2d");
+      offCtx.filter = "sepia(0.85) contrast(1.15) brightness(0.9) saturate(1.1)";
+      offCtx.drawImage(faceImg, sx, sy, sw, sh, 0, 0, off.width, off.height);
+
       ctx.save();
       ctx.beginPath();
       ctx.rect(frameX, frameY, frameW, frameH);
       ctx.clip();
-      ctx.filter = "sepia(0.85) contrast(1.15) brightness(0.9) saturate(1.1)";
-      ctx.drawImage(faceImg, sx, sy, sw, sh, frameX, frameY, frameW, frameH);
-      ctx.filter = "none";
+      ctx.drawImage(off, frameX, frameY, frameW, frameH);
       ctx.restore();
 
       // 「NAME TO BE FILED」の帯を塗りつぶして、実際の被告人名を書く
