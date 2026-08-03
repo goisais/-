@@ -116,6 +116,22 @@ def cast_vote(sid, data):
 
 
 @sio.event
+def skip_phase(sid, data=None):
+    """自分の担当フェーズ中に、話し終わった本人がタイマーを早送りできるようにする。
+    (被告人は被告人陳述だけ、検察官は検察質問だけ、弁護人は弁護士弁護だけスキップ可能)"""
+    name = (data or {}).get("name") or ""
+    if not lobby_state["trial_started"]:
+        return
+    idx = lobby_state["phase_index"]
+    if not (0 <= idx < len(DEFAULT_PHASES)):
+        return
+    expected_role = DEFAULT_PHASES[idx]["key"]
+    if lobby_state["role_map"].get(name) != expected_role:
+        return  # 本人（そのフェーズの担当者）以外からは無視する
+    _advance_phase()
+
+
+@sio.event
 def finalize_verdict(sid, data=None):
     """ホストが「判決を確定する」を押したときに呼ばれる。投票を締め切り、
     有罪/無罪と（有罪なら）刑罰をランダムに決めて、全員を判決ページへ誘導する。"""

@@ -46,10 +46,69 @@ body {
 }
 
 .screen {
+  position: relative;
   background: var(--wood-mid);
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--wood-dark);
+}
+
+/* 異議ありスタンプ: 画面左側を下から上に流れて、上のほうでフェードアウトする */
+.objection-fx-layer {
+  position: absolute;
+  left: 6px;
+  top: 0;
+  bottom: 0;
+  width: 56px;
+  pointer-events: none;
+  z-index: 60;
+  overflow: hidden;
+}
+
+.objection-stamp {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--danger);
+  border: 2px solid var(--cream);
+  color: var(--cream);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  animation: objection-float 2.2s ease-out forwards;
+}
+
+.objection-stamp i {
+  font-size: 16px;
+}
+
+@keyframes objection-float {
+  0% {
+    bottom: 0;
+    opacity: 0;
+    transform: translateX(-50%) rotate(-10deg) scale(0.6);
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(-50%) rotate(-10deg) scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(-50%) rotate(-10deg) scale(1);
+  }
+  100% {
+    bottom: 100%;
+    opacity: 0;
+    transform: translateX(-50%) rotate(-10deg) scale(1);
+  }
 }
 
 /* ヘッダー共通 */
@@ -281,6 +340,23 @@ body {
   height: 100%;
   border-radius: 3px;
   background: var(--danger);
+}
+
+.phase-skip-btn {
+  margin-top: 4px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: var(--gold);
+  color: var(--wood-dark);
+  border: none;
+  border-radius: 5px;
+  padding: 3px 2px;
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* 証拠映像フレーム */

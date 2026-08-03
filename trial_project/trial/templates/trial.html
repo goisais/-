@@ -4,6 +4,9 @@
 <div class="phone-frame">
   <div class="screen">
 
+    <!-- 異議ありスタンプが下から上に流れていくレイヤー(見た目だけなのでクリックは無視する) -->
+    <div class="objection-fx-layer" id="objection-fx-layer"></div>
+
     <div class="screen-header">
       <div class="title-row">
         <div class="brand">
@@ -32,6 +35,11 @@
         <div class="phase-bar" {% if not ph.active %}style="visibility: hidden;"{% endif %}>
           <div class="phase-bar-fill" style="width: {% widthratio ph.remaining_seconds ph.duration 100 %}%;"></div>
         </div>
+        <!-- 話し終わった本人だけが、自分の担当フェーズを早送りできるボタン。
+             普段は空いてるスペースに小さく置いて、自分の番の時だけ出す -->
+        <button class="phase-skip-btn" data-phase-index="{{ forloop.counter0 }}" data-phase-role="{{ ph.key }}" onclick="skipPhase()" style="display: none;">
+          <i class="ti ti-player-skip-forward"></i> 話し終わった
+        </button>
       </div>
       {% endfor %}
     </div>
@@ -154,7 +162,20 @@
   }
   socket.on("objection_update", (data) => {
     document.getElementById("objection-count").textContent = data.count;
+    spawnObjectionStamp();
   });
+
+  // 異議ありスタンプを1つ生成して、下から上に流れるアニメーションのあと自動で消す
+  function spawnObjectionStamp() {
+    const layer = document.getElementById("objection-fx-layer");
+    const stamp = document.createElement("div");
+    stamp.className = "objection-stamp";
+    stamp.innerHTML = '<i class="ti ti-gavel"></i>異議あり!';
+    layer.appendChild(stamp);
+    stamp.addEventListener("animationend", () => stamp.remove());
+    // 万が一animationendが発火しない環境向けの保険
+    setTimeout(() => stamp.remove(), 3000);
+  }
 
   // ---- コメント ----
   function sendComment() {
@@ -196,6 +217,20 @@
         card.querySelector(".phase-bar-fill").style.width = pct + "%";
       }
     });
+    updateSkipButtonVisibility(phaseIndex);
+  }
+
+  // ---- 早送り(話し終わった本人だけ、自分のフェーズを早送りできる) ----
+  function updateSkipButtonVisibility(phaseIndex) {
+    document.querySelectorAll(".phase-skip-btn").forEach((btn) => {
+      const isActivePhase = parseInt(btn.dataset.phaseIndex, 10) === phaseIndex;
+      const isMyPhase = btn.dataset.phaseRole === myRole;
+      btn.style.display = (isActivePhase && isMyPhase) ? "flex" : "none";
+    });
+  }
+
+  function skipPhase() {
+    socket.emit("skip_phase", { name: myName });
   }
 
   function updateGauges(gauges) {
