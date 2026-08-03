@@ -32,10 +32,18 @@
     <!-- 罰ゲーム用のコラ画像合成。
          通常: trial/static/trial/img/punishment_template.png (檻。顔を画面いっぱいに敷いてから重ねる)
          歴史的大犯罪(tier=wanted): trial/static/trial/img/punishment_template_wanted.png
-         (指名手配ポスター。枠の中に顔をセピア調ではめ込んで、名前も書き換える) -->
+         (指名手配ポスター。枠の中に顔をセピア調ではめ込んで、名前も書き換える)
+         無罪: trial/static/trial/video/innocent_reveal.mp4 の中の顔部分に、
+         被告人の顔写真をはめ込んで再生する -->
     <div class="collage-frame">
-      {% if face_capture %}
+      {% if outcome == "guilty" and face_capture %}
       <canvas id="collage-canvas"></canvas>
+      {% elif outcome == "innocent" %}
+      <video id="innocent-video" src="{% static 'trial/video/innocent_reveal.mp4' %}" playsinline style="display: none;"></video>
+      <canvas id="innocent-canvas" style="display: none;"></canvas>
+      <button id="play-innocent-button" class="btn-primary" style="width: 100%; border: none;" onclick="playInnocentReveal()">
+        <i class="ti ti-player-play"></i> 結果を再生する
+      </button>
       {% else %}
       <div class="collage-empty">
         <i class="ti ti-camera-off" style="font-size: 22px; display: block; margin-bottom: 6px;"></i>
@@ -51,7 +59,7 @@
   </div>
 </div>
 
-{% if face_capture %}
+{% if outcome == "guilty" and face_capture %}
 <script>
   const faceCaptureUrl = "{{ face_capture|escapejs }}";
   const tier = "{{ tier|escapejs }}";
@@ -177,6 +185,85 @@
       // 万が一getImageDataが使えない環境でも、セピア無しでそのまま表示は続ける
       console.error("セピア変換に失敗しました（そのままの色で表示します）", err);
     }
+  }
+</script>
+{% endif %}
+
+{% if outcome == "innocent" %}
+<script>
+  // 無罪の演出: 動画(シンジくんのシーンチェンジ)を再生しつつ、シーンが切り替わる
+  // タイミング(00:09:07 = 9秒7フレーム, 30fps)から、シンジくんの顔部分に被告人の
+  // 顔写真をはめ込む。音声は動画のものをそのまま使うので、無音自動再生の制限を
+  // 避けるために「結果を再生する」ボタン(クリック=ユーザー操作)を起点にしている。
+  const innocentVideo = document.getElementById("innocent-video");
+  const innocentCanvas = document.getElementById("innocent-canvas");
+  const innocentCtx = innocentCanvas.getContext("2d");
+  const playInnocentButton = document.getElementById("play-innocent-button");
+  const innocentFaceUrl = "{{ face_capture|default:''|escapejs }}";
+
+  const FACE_SWAP_START = 9 + 7 / 30; // 00:09:07(mm:ss:frames, 30fps)でシーンチェンジ
+  // 顔をはめ込む楕円の位置(880x720の動画を基準にした割合。動画を差し替えたら要調整)
+  const FACE_CX = 0.5284, FACE_CY = 0.4306, FACE_RX = 0.1875, FACE_RY = 0.2222;
+
+  let innocentFaceImg = null;
+  if (innocentFaceUrl) {
+    innocentFaceImg = new Image();
+    innocentFaceImg.src = innocentFaceUrl;
+  }
+
+  function playInnocentReveal() {
+    playInnocentButton.style.display = "none";
+    innocentCanvas.style.display = "block";
+    innocentVideo.currentTime = 0;
+    innocentVideo.play().catch((err) => console.error("動画の再生に失敗しました", err));
+    requestAnimationFrame(drawInnocentFrame);
+  }
+
+  function drawInnocentFrame() {
+    drawInnocentOneFrame();
+    if (!innocentVideo.paused && !innocentVideo.ended) {
+      requestAnimationFrame(drawInnocentFrame);
+    }
+  }
+
+  function drawInnocentOneFrame() {
+    if (innocentCanvas.width !== (innocentVideo.videoWidth || 880)) {
+      innocentCanvas.width = innocentVideo.videoWidth || 880;
+      innocentCanvas.height = innocentVideo.videoHeight || 720;
+    }
+    innocentCtx.drawImage(innocentVideo, 0, 0, innocentCanvas.width, innocentCanvas.height);
+    if (innocentFaceImg && innocentFaceImg.complete && innocentVideo.currentTime >= FACE_SWAP_START) {
+      drawFaceOntoVideo();
+    }
+  }
+
+  function drawFaceOntoVideo() {
+    const cx = innocentCanvas.width * FACE_CX;
+    const cy = innocentCanvas.height * FACE_CY;
+    const rx = innocentCanvas.width * FACE_RX;
+    const ry = innocentCanvas.height * FACE_RY;
+
+    const faceRatio = innocentFaceImg.naturalWidth / innocentFaceImg.naturalHeight;
+    const targetRatio = rx / ry;
+    let sx, sy, sw, sh;
+    if (faceRatio > targetRatio) {
+      sh = innocentFaceImg.naturalHeight;
+      sw = sh * targetRatio;
+      sx = (innocentFaceImg.naturalWidth - sw) / 2;
+      sy = 0;
+    } else {
+      sw = innocentFaceImg.naturalWidth;
+      sh = sw / targetRatio;
+      sx = 0;
+      sy = (innocentFaceImg.naturalHeight - sh) / 2;
+    }
+
+    innocentCtx.save();
+    innocentCtx.beginPath();
+    innocentCtx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    innocentCtx.clip();
+    innocentCtx.drawImage(innocentFaceImg, sx, sy, sw, sh, cx - rx, cy - ry, rx * 2, ry * 2);
+    innocentCtx.restore();
   }
 </script>
 {% endif %}
