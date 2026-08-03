@@ -138,7 +138,7 @@ def role_reveal(request):
     if not username or not role_key:
         return redirect("index")
     role = {"key": role_key, **ROLE_META[role_key]}
-    return render(request, "role_reveal.html", {"role": role})
+    return render(request, "role_reveal.html", {"role": role, "my_name": username})
 
 
 def trial(request):

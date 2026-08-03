@@ -16,6 +16,9 @@
         </div>
       </div>
       <div class="subtitle">{{ case_name }}</div>
+      <!-- 同じブラウザの複数タブでテストすると、セッションが共有されて役割が混ざるので、
+           今どの名前・役割でログイン中かここで確認できるようにしている -->
+      <div class="subtitle" style="color: var(--gold);">ログイン中: {{ my_name }}（{{ my_role }}）{% if is_host %} ・ホスト{% endif %}</div>
     </div>
 
     <!-- フェーズタイマー: サーバーが1秒ごとに進行させ、全員の画面に同じ残り時間を配信している -->
@@ -240,6 +243,10 @@
     if (!hasVoted) {
       document.getElementById("voting-buttons").style.display = "flex";
     }
+    // ホストの「判決を確定する」ボタンは、ページ読み込み時点でまだ投票が
+    // 始まっていないとdisplay:noneのまま埋め込まれるので、ここで確実に表示する
+    const finalizeBtn = document.getElementById("finalize-verdict-button");
+    if (finalizeBtn) finalizeBtn.style.display = "block";
     if (votes) updateVerdictBar(votes);
   }
 

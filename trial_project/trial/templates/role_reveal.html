@@ -6,6 +6,9 @@
 
     <div class="screen-header" style="text-align: center; padding: 10px 14px;">
       <div style="font-size: 10px; letter-spacing: 2px; color: var(--text-cream-muted);">開廷</div>
+      <!-- 同じブラウザの複数タブでテストすると、セッションが共有されて役割が混ざるので、
+           今どの名前でログイン中かここで確認できるようにしている -->
+      <div style="font-size: 11px; color: var(--gold); margin-top: 4px;">ログイン中: {{ my_name }}</div>
     </div>
 
     <div class="reveal-center">
