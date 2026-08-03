@@ -18,18 +18,19 @@ DEFAULT_PHASES = [
     {"key": "defense", "label": "弁護士弁護", "icon": "ti-scale"},
 ]
 
-GUILTY_SENTENCES = [
-    "懲役3年（執行猶予つき）",
-    "懲役10年",
-    "無期懲役",
-    "終身・罰ゲーム刑",
-    "土下座100回の刑",
-    "反省文3000字執筆の刑",
-    "帰りのHRで公開謝罪の刑",
-    "1週間キャラ変の刑",
-    "みんなの前で一発ギャグの刑",
-    "次の遅刻理由を3倍面白くする刑",
-]
+MIN_PRISON_YEARS = 7
+MAX_PRISON_YEARS = 30
+LIFE_SENTENCE_CHANCE = 0.5  # 有罪(通常枠)のうち、約50%は無期懲役にする
+
+
+def random_guilty_sentence():
+    """有罪(通常枠)の刑罰をランダムに決める。無期懲役 or 懲役◯年(執行猶予つきのことも)"""
+    if random.random() < LIFE_SENTENCE_CHANCE:
+        return "無期懲役"
+    years = random.randint(MIN_PRISON_YEARS, MAX_PRISON_YEARS)
+    if random.random() < 0.5:
+        return f"懲役{years}年（執行猶予付き）"
+    return f"懲役{years}年"
 
 # ごく稀に「歴史的大犯罪」演出（指名手配ポスター風）になる、有罪の中でも一番重い枠
 WANTED_TITLES = [
@@ -39,7 +40,7 @@ WANTED_TITLES = [
     "伝説級の言い訳犯罪者",
     "極悪指名手配犯",
 ]
-WANTED_TIER_CHANCE = 0.35  # 有罪判決のうち、約35%がこの演出になる
+WANTED_TIER_CHANCE = 0.5  # 有罪判決のうち、約50%がこの演出になる(通常枠と半々で交互っぽく出る)
 
 ROLE_META = {
     "defendant": {
@@ -187,7 +188,7 @@ def determine_verdict():
             tier = "wanted"
             sentence = random.choice(WANTED_TITLES)
         else:
-            sentence = random.choice(GUILTY_SENTENCES)
+            sentence = random_guilty_sentence()
 
     result = {"outcome": outcome, "sentence": sentence, "tier": tier}
     lobby_state["verdict_result"] = result

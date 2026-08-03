@@ -56,10 +56,6 @@
         </div>
         <div class="tag-defendant">被告人：{{ defendant_name }}</div>
         <div class="tag-evidence" id="speaking-tag" style="display: none;">発言中</div>
-        <!-- 検察官質問フェーズに入って10秒後、焦ってきてる演出として出す汗マーク。
-             弁護士弁護フェーズに入ったら消える -->
-        <img id="sweat-overlay" src="{% static 'trial/img/nervous_sweat_overlay.png' %}" alt=""
-             style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; display: none;" />
 
         <div class="gauge-row">
           <div class="gauge">
@@ -256,7 +252,6 @@
     if (data.voting_open) showVoting(data.votes);
     currentPhaseIndex = data.phase_index;
     applyBroadcastRules();
-    updateSweatEffect(data.phase_index, data.phase_remaining);
   });
 
   socket.on("phase_tick", (data) => {
@@ -273,7 +268,6 @@
     updateGauges(data.gauges);
     currentPhaseIndex = data.phase_index;
     applyBroadcastRules();
-    updateSweatEffect(data.phase_index, data.remaining);
   });
 
   socket.on("phase_ended", (data) => {
@@ -281,38 +275,7 @@
     // 全フェーズ終了＝検察官/弁護人の発言タイムも終わりなので、マイクを止める
     currentPhaseIndex = -2;
     applyBroadcastRules();
-    updateSweatEffect(-2, 0);
   });
-
-  // ---- 検察官質問フェーズ中の「焦ってきてる」演出(汗マーク) ----
-  // 検察官質問フェーズ(phase_index===1)に入ってから10秒後に表示し、
-  // 弁護士弁護フェーズ(phase_index===2)に切り替わったら消える
-  let sweatTimeoutId = null;
-  const SWEAT_DELAY_SECONDS = 10;
-
-  function updateSweatEffect(phaseIndex, remaining) {
-    if (sweatTimeoutId) {
-      clearTimeout(sweatTimeoutId);
-      sweatTimeoutId = null;
-    }
-    const overlay = document.getElementById("sweat-overlay");
-    if (phaseIndex !== 1) {
-      overlay.style.display = "none";
-      return;
-    }
-    const card = document.getElementById("phase-" + phaseIndex);
-    const duration = card ? (parseInt(card.dataset.duration, 10) || 0) : 0;
-    const elapsed = duration - remaining;
-    if (elapsed >= SWEAT_DELAY_SECONDS) {
-      overlay.style.display = "block";
-    } else {
-      overlay.style.display = "none";
-      const waitMs = (SWEAT_DELAY_SECONDS - elapsed) * 1000;
-      sweatTimeoutId = setTimeout(() => {
-        overlay.style.display = "block";
-      }, waitMs);
-    }
-  }
 
   // ---- 判決投票 ----
   function showVoting(votes) {
