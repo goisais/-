@@ -107,15 +107,15 @@
     ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
 
     loadFace((faceImg, sx, sy, sw, sh) => {
-      // Safariはclip()とfilterを同時に使うとfilterだけ無視されることがあるため、
-      // 先にクリップ無しのオフスクリーンcanvasでセピア加工してから、
-      // 加工済みの画像を枠にクリップして貼る(filterを使わない単純なdrawImageにする)
+      // ctx.filter(CSS Filter API)はSafari/iOSで無視されることがあるので使わない。
+      // 代わりにオフスクリーンcanvasに素の画像を描いてから、getImageData/putImageDataで
+      // ピクセルを直接セピア色に変換する(どのブラウザでも同じ結果になる、より確実な方法)
       const off = document.createElement("canvas");
       off.width = Math.max(1, Math.round(frameW));
       off.height = Math.max(1, Math.round(frameH));
       const offCtx = off.getContext("2d");
-      offCtx.filter = "sepia(0.85) contrast(1.15) brightness(0.9) saturate(1.1)";
       offCtx.drawImage(faceImg, sx, sy, sw, sh, 0, 0, off.width, off.height);
+      applySepia(offCtx, off.width, off.height);
 
       ctx.save();
       ctx.beginPath();
@@ -158,6 +158,25 @@
       drawFn(faceImg, sx, sy, sw, sh);
     };
     faceImg.src = faceCaptureUrl;
+  }
+
+  // セピア調に変換する(古典的なセピア変換行列)。ctx.filterに頼らずピクセルを直接いじるので、
+  // filter未対応/挙動が怪しいブラウザでも同じ見た目になる
+  function applySepia(targetCtx, w, h) {
+    try {
+      const imageData = targetCtx.getImageData(0, 0, w, h);
+      const d = imageData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        d[i] = Math.min(255, r * 0.393 + g * 0.769 + b * 0.189);
+        d[i + 1] = Math.min(255, r * 0.349 + g * 0.686 + b * 0.168);
+        d[i + 2] = Math.min(255, r * 0.272 + g * 0.534 + b * 0.131);
+      }
+      targetCtx.putImageData(imageData, 0, 0);
+    } catch (err) {
+      // 万が一getImageDataが使えない環境でも、セピア無しでそのまま表示は続ける
+      console.error("セピア変換に失敗しました（そのままの色で表示します）", err);
+    }
   }
 </script>
 {% endif %}
