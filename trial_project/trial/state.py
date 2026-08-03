@@ -59,6 +59,12 @@ def make_initial_state():
         "role_map": {},  # 名前 -> role key
         "objection_count": 0,
         "comments": [],  # [{"name": ..., "text": ...}]
+        "phase_index": -1,  # -1=未開廷、0=被告人陳述、1=検察質問、2=弁護士弁護、3=全フェーズ終了
+        "phase_remaining": 0,  # 現在のフェーズの残り秒数
+        "gauges": {"nervousness": 50, "suspicion": 50},
+        "voting_open": False,
+        "votes": {"guilty": 0, "innocent": 0},
+        "voters": [],  # 投票済みの名前一覧（二重投票防止）
     }
 
 
@@ -118,5 +124,23 @@ def start_trial(case_name, defendant):
             "role_map": role_map,
             "objection_count": 0,
             "comments": [],
+            "phase_index": 0,
+            "phase_remaining": lobby_state["phase_durations"][DEFAULT_PHASES[0]["key"]],
+            "gauges": {"nervousness": 50, "suspicion": 50},
+            "voting_open": False,
+            "votes": {"guilty": 0, "innocent": 0},
+            "voters": [],
         }
     )
+
+
+def current_phase_key():
+    idx = lobby_state["phase_index"]
+    if 0 <= idx < len(DEFAULT_PHASES):
+        return DEFAULT_PHASES[idx]["key"]
+    return None
+
+
+def random_walk(current, spread=8):
+    delta = random.randint(-spread, spread)
+    return max(0, min(100, current + delta))

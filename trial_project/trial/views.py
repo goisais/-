@@ -10,10 +10,10 @@
   /role-reveal         開廷時: 役割発表画面
   /trial               法廷配信画面（ホスト/参加者共通の1画面）
 
+フェーズの進行(自動切り替え・カウントダウン・ゲージ・投票)はtrial/sockets.pyの
+サーバー側タイマーが管理していて、Socket.IO経由で全員に同じ状態を配信している。
+
 まだ実装していない（次のフェーズ）:
-  - フェーズの自動切り替え・全員同期のカウントダウン
-  - 本物の同時接続数としての視聴者数
-  - ラスト30秒だけ投票を開放する仕組み
   - 罰ゲーム演出（カメラ撮影 → コラ画像生成）
 """
 
@@ -28,7 +28,7 @@ from trial.state import (
     start_trial,
     reset_for_new_round,
 )
-from trial.sockets import notify_participants_updated, notify_trial_started
+from trial.sockets import notify_participants_updated, notify_trial_started, start_phase_timer
 
 
 def index(request):
@@ -51,6 +51,9 @@ def enter(request):
         request.session["is_host"] = True
         # ホストが「ホストとして開廷する」を押すたびに、新しい部屋(コード)として作り直す
         reset_for_new_round()
+        # ホスト自身も参加者の1人（被告人になれるし、待機画面の一覧にも出る）
+        if username not in lobby_state["participants"]:
+            lobby_state["participants"].append(username)
         return redirect("host_setup")
 
     # 参加者として参加する場合は、招待コードの一致を確認する
@@ -112,6 +115,7 @@ def host_setup_start(request):
 
     start_trial(case_name, defendant)
     notify_trial_started()
+    start_phase_timer()
     return redirect("trial")
 
 
@@ -139,20 +143,28 @@ def role_reveal(request):
 
 def trial(request):
     state = lobby_state
-    active_key = "defendant"
     phases = []
-    for ph in DEFAULT_PHASES:
+    for i, ph in enumerate(DEFAULT_PHASES):
         duration = state["phase_durations"].get(ph["key"], 90)
+        remaining = state["phase_remaining"] if i == state["phase_index"] else duration
         phases.append(
             {
                 "label": ph["label"],
                 "icon": ph["icon"],
                 "key": ph["key"],
-                "time": format_mmss(duration),
-                "progress": 0,
-                "active": ph["key"] == active_key,
+                "time": format_mmss(remaining),
+                "duration": duration,
+                "remaining_seconds": remaining,
+                "active": i == state["phase_index"],
             }
         )
+
+    my_name = request.session.get("username", "匿名")
+    my_role = state["role_map"].get(my_name, "gallery")
+
+    guilty = state["votes"]["guilty"]
+    innocent = state["votes"]["innocent"]
+    total_votes = guilty + innocent
 
     return render(
         request,
@@ -161,14 +173,19 @@ def trial(request):
             "case_name": state["case_name"] or "裁判",
             "defendant_name": state["defendant"] or "未定",
             "phases": phases,
-            "gauges": {"nervousness": 50, "suspicion": 50},
+            "phase_index": state["phase_index"],
+            "gauges": state["gauges"],
             "excuse_text": "ここに被告人の発言が表示されます",
             "prosecutor": {"name": state["prosecutor"] or "未定"},
             "defense": {"name": state["defense"] or "未定"},
             "objection_count": state["objection_count"],
             "comments": state["comments"],
-            "verdict": {"guilty": 50, "innocent": 50},
+            "voting_open": state["voting_open"],
+            "votes": state["votes"],
+            "guilty_pct": round(guilty / total_votes * 100) if total_votes else 50,
+            "innocent_pct": round(innocent / total_votes * 100) if total_votes else 50,
             "viewer_count": len(state["participants"]),
-            "my_name": request.session.get("username", "匿名"),
+            "my_name": my_name,
+            "my_role": my_role,
         },
     )
