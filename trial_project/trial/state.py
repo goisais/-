@@ -31,6 +31,16 @@ GUILTY_SENTENCES = [
     "次の遅刻理由を3倍面白くする刑",
 ]
 
+# ごく稀に「歴史的大犯罪」演出（指名手配ポスター風）になる、有罪の中でも一番重い枠
+WANTED_TITLES = [
+    "史上最悪の大犯罪者",
+    "歴史に刻まれた大罪人",
+    "国家がざわついた大事件の主犯",
+    "伝説級の言い訳犯罪者",
+    "極悪指名手配犯",
+]
+WANTED_TIER_CHANCE = 0.2  # 有罪判決のうち、約20%がこの演出になる
+
 ROLE_META = {
     "defendant": {
         "label": "被告人",
@@ -143,7 +153,7 @@ def start_trial(case_name, defendant):
             "voting_open": False,
             "votes": {"guilty": 0, "innocent": 0},
             "voters": [],
-            "verdict_result": None,  # {"outcome": "guilty"/"innocent", "sentence": str|None}
+            "verdict_result": None,  # {"outcome": "guilty"/"innocent", "sentence": str|None, "tier": "normal"/"wanted"}
             "defendant_face_capture": None,  # 被告人の顔切り抜き画像(data URL文字列)
         }
     )
@@ -162,14 +172,24 @@ def random_walk(current, spread=8):
 
 
 def determine_verdict():
-    """投票を締め切って、有罪/無罪と（有罪なら）刑罰をランダムに決める"""
+    """投票を締め切って、有罪/無罪と（有罪なら）刑罰をランダムに決める。
+    有罪の中でもごく稀に、指名手配ポスター風の「歴史的大犯罪」演出(tier="wanted")になる。"""
     votes = lobby_state["votes"]
     if votes["guilty"] == votes["innocent"]:
         outcome = random.choice(["guilty", "innocent"])
     else:
         outcome = "guilty" if votes["guilty"] > votes["innocent"] else "innocent"
-    sentence = random.choice(GUILTY_SENTENCES) if outcome == "guilty" else None
-    result = {"outcome": outcome, "sentence": sentence}
+
+    tier = "normal"
+    sentence = None
+    if outcome == "guilty":
+        if random.random() < WANTED_TIER_CHANCE:
+            tier = "wanted"
+            sentence = random.choice(WANTED_TITLES)
+        else:
+            sentence = random.choice(GUILTY_SENTENCES)
+
+    result = {"outcome": outcome, "sentence": sentence, "tier": tier}
     lobby_state["verdict_result"] = result
     lobby_state["voting_open"] = False
     return result

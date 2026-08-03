@@ -198,7 +198,7 @@ def verdict(request):
     罰ゲーム用のコラ画像テンプレートは trial/static/trial/img/punishment_template.png に
     置くと自動で背景に使われる（無ければ顔写真だけ表示される）。"""
     state = lobby_state
-    result = state["verdict_result"] or {"outcome": "innocent", "sentence": None}
+    result = state["verdict_result"] or {"outcome": "innocent", "sentence": None, "tier": "normal"}
     return render(
         request,
         "verdict.html",
@@ -207,6 +207,7 @@ def verdict(request):
             "defendant_name": state["defendant"] or "未定",
             "outcome": result["outcome"],
             "sentence": result["sentence"],
+            "tier": result.get("tier", "normal"),
             "face_capture": state["defendant_face_capture"],
         },
     )
