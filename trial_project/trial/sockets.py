@@ -19,12 +19,15 @@ from trial.state import (
     DEFAULT_PHASES,
     current_phase_key,
     random_walk,
+    determine_verdict,
 )
 
 LOBBY_ROOM = "lobby"
 TRIAL_ROOM = "trial"
 
-sio = socketio.Server(async_mode="threading", cors_allowed_origins="*")
+# 顔切り抜き画像(data URL)をSocket.IO経由で送るので、デフォルトの受信上限だと
+# 弾かれることがある。少し余裕を持たせておく(だいたい数百KB〜1MB程度を想定)。
+sio = socketio.Server(async_mode="threading", cors_allowed_origins="*", max_http_buffer_size=5_000_000)
 
 # sid -> {"name": str, "role": str} 法廷配信画面に今いる人（WebRTCの接続相手探しに使う）
 trial_peers = {}
@@ -110,6 +113,28 @@ def cast_vote(sid, data):
     lobby_state["voters"].append(name)
     lobby_state["votes"][choice] += 1
     sio.emit("verdict_update", {"votes": lobby_state["votes"]}, room=TRIAL_ROOM)
+
+
+@sio.event
+def finalize_verdict(sid, data=None):
+    """ホストが「判決を確定する」を押したときに呼ばれる。投票を締め切り、
+    有罪/無罪と（有罪なら）刑罰をランダムに決めて、全員を判決ページへ誘導する。"""
+    if not lobby_state["trial_started"]:
+        return
+    if lobby_state["verdict_result"] is not None:
+        return  # 二重確定防止
+    result = determine_verdict()
+    sio.emit("verdict_finalized", result, room=TRIAL_ROOM)
+
+
+@sio.event
+def face_capture(sid, data):
+    """被告人陳述フェーズ終了1秒前に、被告人のブラウザ側で顔検出→切り抜きした
+    画像(data URL)を受け取って保存する。罰ゲーム(コラ画像合成)で使う。"""
+    image_data_url = (data or {}).get("image")
+    if not image_data_url:
+        return
+    lobby_state["defendant_face_capture"] = image_data_url
 
 
 # ---------- WebRTCのシグナリング中継 ----------

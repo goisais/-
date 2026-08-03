@@ -123,11 +123,20 @@
       <div id="voting-closed-note" style="text-align: center; font-size: 11px; color: var(--text-brown-muted); margin-top: 8px; display: {% if voting_open %}none{% else %}block{% endif %};">
         全フェーズが終わると投票できます
       </div>
+      {% if is_host %}
+      <button id="finalize-verdict-button" onclick="finalizeVerdict()" style="display: {% if voting_open %}block{% else %}none{% endif %}; width: 100%; margin-top: 10px; background: var(--wood-dark); color: #fff; border: none; border-radius: 6px; padding: 10px; font-size: 13px; font-weight: 600;">
+        判決を確定する（ホスト操作）
+      </button>
+      {% endif %}
     </div>
 
   </div>
 </div>
 
+{% if my_role == "defendant" %}
+<!-- 罰ゲーム用: 被告人陳述フェーズ終了1秒前に顔を検出して切り抜くために使う -->
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+{% endif %}
 <script>
   const socket = io();
   const myName = "{{ my_name|escapejs }}";
@@ -205,6 +214,10 @@
   socket.on("phase_tick", (data) => {
     updateActivePhase(data.phase_index, data.remaining);
     updateGauges(data.gauges);
+    // 被告人陳述フェーズが残り1秒になったタイミングで、罰ゲーム用の顔切り抜きを1回だけ撮る
+    if (data.phase_index === 0 && data.remaining === 1) {
+      captureDefendantFace();
+    }
   });
 
   socket.on("phase_changed", (data) => {
@@ -251,6 +264,16 @@
     updateVerdictBar(data.votes);
   });
 
+  function finalizeVerdict() {
+    const btn = document.getElementById("finalize-verdict-button");
+    if (btn) { btn.disabled = true; btn.textContent = "判決を言い渡し中…"; }
+    socket.emit("finalize_verdict");
+  }
+
+  socket.on("verdict_finalized", () => {
+    window.location.href = "{% url 'verdict' %}";
+  });
+
   // ---- WebRTC: 被告人の映像・検察官/弁護人の音声を配信/受信する ----
   // 仕組み:
   //   ・被告人はずっと(全フェーズ)、検察官/弁護人は自分の担当フェーズの間だけ「発信者」になる
@@ -292,6 +315,17 @@
       }
       localStream = null;
       return;
+    }
+    if (withVideo) {
+      // 被告人自身の画面にも、自分のカメラ映像をプレビュー表示する
+      // （自分の声がスピーカーから聞こえてハウリングしないよう、必ずmuted）
+      const videoEl = document.getElementById("defendant-video");
+      videoEl.srcObject = localStream;
+      videoEl.muted = true;
+      videoEl.style.display = "block";
+      document.getElementById("video-placeholder").style.display = "none";
+      videoEl.play().catch(() => {});
+      maybeInitFaceCapture();
     }
     Object.keys(knownPeers).forEach((sid) => connectToViewer(sid));
   }
@@ -404,5 +438,61 @@
 
   // ページを開いた時点で、既に自分の担当フェーズ中なら配信を始める
   applyBroadcastRules();
+
+  // ---- 罰ゲーム用: 被告人の顔切り抜きキャプチャ ----
+  // face-api.js(ブラウザ上で動く軽量な顔検出)で顔の位置を見つけて、そこだけ切り抜く。
+  // モデル読み込みや検出に失敗しても、映像の中央を正方形で切り抜くフォールバックで必ず1枚は送る。
+  let faceModelsLoaded = false;
+  let faceCaptureDone = false;
+
+  async function maybeInitFaceCapture() {
+    if (myRole !== "defendant" || faceModelsLoaded || typeof faceapi === "undefined") return;
+    try {
+      await faceapi.nets.tinyFaceDetector.loadFromUri(
+        "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights"
+      );
+      faceModelsLoaded = true;
+    } catch (err) {
+      console.error("顔検出モデルの読み込みに失敗しました（中央切り抜きにフォールバックします）", err);
+    }
+  }
+
+  async function captureDefendantFace() {
+    if (myRole !== "defendant" || faceCaptureDone) return;
+    const videoEl = document.getElementById("defendant-video");
+    if (!videoEl || !videoEl.videoWidth) return;
+    faceCaptureDone = true; // 1裁判につき1回だけ
+
+    let detection = null;
+    if (faceModelsLoaded && typeof faceapi !== "undefined") {
+      try {
+        detection = await faceapi.detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions());
+      } catch (err) {
+        console.error("顔検出に失敗しました（中央切り抜きにフォールバックします）", err);
+      }
+    }
+
+    let sx, sy, sw, sh;
+    if (detection) {
+      const box = detection.box;
+      const pad = box.width * 0.3; // 少し余白を持たせて切り抜く
+      sx = Math.max(0, box.x - pad);
+      sy = Math.max(0, box.y - pad);
+      sw = Math.min(videoEl.videoWidth - sx, box.width + pad * 2);
+      sh = Math.min(videoEl.videoHeight - sy, box.height + pad * 2);
+    } else {
+      const size = Math.min(videoEl.videoWidth, videoEl.videoHeight) * 0.6;
+      sx = (videoEl.videoWidth - size) / 2;
+      sy = (videoEl.videoHeight - size) / 2;
+      sw = size;
+      sh = size;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 300;
+    canvas.height = Math.max(1, Math.round(300 * (sh / sw)));
+    canvas.getContext("2d").drawImage(videoEl, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    socket.emit("face_capture", { image: canvas.toDataURL("image/jpeg", 0.85) });
+  }
 </script>
 {% endblock %}

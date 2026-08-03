@@ -18,6 +18,19 @@ DEFAULT_PHASES = [
     {"key": "defense", "label": "弁護士弁護", "icon": "ti-scale"},
 ]
 
+GUILTY_SENTENCES = [
+    "懲役3年（執行猶予つき）",
+    "懲役10年",
+    "無期懲役",
+    "終身・罰ゲーム刑",
+    "土下座100回の刑",
+    "反省文3000字執筆の刑",
+    "帰りのHRで公開謝罪の刑",
+    "1週間キャラ変の刑",
+    "みんなの前で一発ギャグの刑",
+    "次の遅刻理由を3倍面白くする刑",
+]
+
 ROLE_META = {
     "defendant": {
         "label": "被告人",
@@ -130,6 +143,8 @@ def start_trial(case_name, defendant):
             "voting_open": False,
             "votes": {"guilty": 0, "innocent": 0},
             "voters": [],
+            "verdict_result": None,  # {"outcome": "guilty"/"innocent", "sentence": str|None}
+            "defendant_face_capture": None,  # 被告人の顔切り抜き画像(data URL文字列)
         }
     )
 
@@ -144,3 +159,17 @@ def current_phase_key():
 def random_walk(current, spread=8):
     delta = random.randint(-spread, spread)
     return max(0, min(100, current + delta))
+
+
+def determine_verdict():
+    """投票を締め切って、有罪/無罪と（有罪なら）刑罰をランダムに決める"""
+    votes = lobby_state["votes"]
+    if votes["guilty"] == votes["innocent"]:
+        outcome = random.choice(["guilty", "innocent"])
+    else:
+        outcome = "guilty" if votes["guilty"] > votes["innocent"] else "innocent"
+    sentence = random.choice(GUILTY_SENTENCES) if outcome == "guilty" else None
+    result = {"outcome": outcome, "sentence": sentence}
+    lobby_state["verdict_result"] = result
+    lobby_state["voting_open"] = False
+    return result

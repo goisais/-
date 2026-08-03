@@ -161,6 +161,7 @@ def trial(request):
 
     my_name = request.session.get("username", "匿名")
     my_role = state["role_map"].get(my_name, "gallery")
+    is_host = bool(request.session.get("is_host"))
 
     guilty = state["votes"]["guilty"]
     innocent = state["votes"]["innocent"]
@@ -187,5 +188,25 @@ def trial(request):
             "viewer_count": len(state["participants"]),
             "my_name": my_name,
             "my_role": my_role,
+            "is_host": is_host,
+        },
+    )
+
+
+def verdict(request):
+    """判決結果画面。有罪/無罪と（有罪なら）ランダムな刑罰、被告人の顔切り抜き画像を表示する。
+    罰ゲーム用のコラ画像テンプレートは trial/static/trial/img/punishment_template.png に
+    置くと自動で背景に使われる（無ければ顔写真だけ表示される）。"""
+    state = lobby_state
+    result = state["verdict_result"] or {"outcome": "innocent", "sentence": None}
+    return render(
+        request,
+        "verdict.html",
+        {
+            "case_name": state["case_name"] or "裁判",
+            "defendant_name": state["defendant"] or "未定",
+            "outcome": result["outcome"],
+            "sentence": result["sentence"],
+            "face_capture": state["defendant_face_capture"],
         },
     )

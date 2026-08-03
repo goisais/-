@@ -653,3 +653,67 @@ body {
   font-size: 11px;
   color: var(--text-cream-muted);
 }
+
+/* 判決結果画面 */
+.verdict-reveal {
+  padding: 28px 16px 8px;
+  text-align: center;
+}
+
+.verdict-reveal .pre-label {
+  font-size: 11px;
+  color: var(--text-cream-muted);
+  margin-bottom: 10px;
+}
+
+.verdict-reveal .outcome-text {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 4px;
+}
+
+.verdict-reveal .outcome-text.guilty { color: var(--danger); }
+.verdict-reveal .outcome-text.innocent { color: var(--success); }
+
+.verdict-reveal .case-name {
+  font-size: 12px;
+  color: var(--text-cream-muted);
+  margin-top: 6px;
+}
+
+.sentence-tag {
+  margin: 14px auto 0;
+  display: inline-block;
+  background: var(--wood-dark);
+  color: var(--gold);
+  border: 2px solid var(--gold);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.collage-frame {
+  margin: 18px 16px 0;
+  border: 3px solid var(--gold);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--wood-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collage-frame canvas,
+.collage-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.collage-empty {
+  padding: 30px 16px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-cream-muted);
+}

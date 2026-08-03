@@ -9,4 +9,5 @@ urlpatterns = [
     path("join/waiting", views.join_waiting, name="join_waiting"),
     path("role-reveal", views.role_reveal, name="role_reveal"),
     path("trial", views.trial, name="trial"),
+    path("verdict", views.verdict, name="verdict"),
 ]

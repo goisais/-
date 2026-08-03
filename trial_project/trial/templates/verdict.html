@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}言い訳裁判 - 判決{% endblock %}
+{% block content %}
+<div class="phone-frame">
+  <div class="screen">
+
+    <div class="screen-header" style="text-align: center; padding: 10px 14px;">
+      <div style="font-size: 10px; letter-spacing: 2px; color: var(--text-cream-muted);">判決</div>
+    </div>
+
+    <div class="verdict-reveal">
+      <div class="pre-label">{{ defendant_name }} の判決は…</div>
+      {% if outcome == "guilty" %}
+      <div class="outcome-text guilty">有罪</div>
+      {% else %}
+      <div class="outcome-text innocent">無罪</div>
+      {% endif %}
+      <div class="case-name">{{ case_name }}</div>
+
+      {% if outcome == "guilty" and sentence %}
+      <div class="sentence-tag">
+        <i class="ti ti-gavel"></i> {{ sentence }}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- 罰ゲーム用のコラ画像合成。テンプレート画像(trial/static/trial/img/punishment_template.png)を
+         置くとそこに顔写真を貼り付けて表示する。無ければ顔写真だけ表示する -->
+    <div class="collage-frame">
+      {% if face_capture %}
+      <canvas id="collage-canvas"></canvas>
+      {% else %}
+      <div class="collage-empty">
+        <i class="ti ti-camera-off" style="font-size: 22px; display: block; margin-bottom: 6px;"></i>
+        顔写真はまだありません
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="section-pad">
+      <a href="{% url 'index' %}" class="btn-primary" style="text-decoration: none;">トップに戻る</a>
+    </div>
+
+  </div>
+</div>
+
+{% if face_capture %}
+<script>
+  const faceCaptureUrl = "{{ face_capture|escapejs }}";
+  const templateUrl = "{% static 'trial/img/punishment_template.png' %}";
+
+  const canvas = document.getElementById("collage-canvas");
+  const ctx = canvas.getContext("2d");
+
+  const faceImg = new Image();
+  faceImg.onload = () => {
+    const templateImg = new Image();
+    templateImg.onload = () => {
+      // コラ画像テンプレートが見つかった場合: テンプレートの上に顔を貼り付ける
+      // ※ 貼り付け位置(faceX/faceY/faceW)は仮の値なので、実際のテンプレート画像に
+      //    合わせて調整してください
+      canvas.width = templateImg.naturalWidth;
+      canvas.height = templateImg.naturalHeight;
+      ctx.drawImage(templateImg, 0, 0);
+      const faceW = canvas.width * 0.28;
+      const faceH = faceW * (faceImg.naturalHeight / faceImg.naturalWidth);
+      const faceX = canvas.width * 0.36;
+      const faceY = canvas.height * 0.12;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(faceX, faceY, faceW, faceH);
+      ctx.clip();
+      ctx.drawImage(faceImg, faceX, faceY, faceW, faceH);
+      ctx.restore();
+    };
+    templateImg.onerror = () => {
+      // テンプレート画像がまだ無い場合: 顔写真だけをそのまま表示する
+      canvas.width = faceImg.naturalWidth;
+      canvas.height = faceImg.naturalHeight;
+      ctx.drawImage(faceImg, 0, 0);
+    };
+    templateImg.src = templateUrl;
+  };
+  faceImg.src = faceCaptureUrl;
+</script>
+{% endif %}
+{% endblock %}
