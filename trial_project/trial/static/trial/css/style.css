@@ -448,18 +448,6 @@ body {
   border-radius: 4px;
 }
 
-.excuse-caption {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  right: 8px;
-  background: rgba(0, 0, 0, 0.5);
-  color: var(--cream);
-  font-size: 12px;
-  padding: 6px 9px;
-  border-radius: 4px;
-}
-
 /* ガチャバッジ */
 .gacha-row {
   display: flex;

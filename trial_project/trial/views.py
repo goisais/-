@@ -176,7 +176,6 @@ def trial(request):
             "phases": phases,
             "phase_index": state["phase_index"],
             "gauges": state["gauges"],
-            "excuse_text": "ここに被告人の発言が表示されます",
             "prosecutor": {"name": state["prosecutor"] or "未定"},
             "defense": {"name": state["defense"] or "未定"},
             "objection_count": state["objection_count"],
