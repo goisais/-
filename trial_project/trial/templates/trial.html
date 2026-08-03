@@ -230,6 +230,11 @@
   }
 
   function skipPhase() {
+    // 被告人が自分の陳述フェーズを早送りする場合、通常の「残り1秒」のタイミングを
+    // 飛び越えてしまうので、スキップした瞬間に顔写真を撮っておく(罰ゲーム用)
+    if (myRole === "defendant") {
+      captureDefendantFace();
+    }
     socket.emit("skip_phase", { name: myName });
   }
 
