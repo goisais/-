@@ -39,7 +39,7 @@ WANTED_TITLES = [
     "伝説級の言い訳犯罪者",
     "極悪指名手配犯",
 ]
-WANTED_TIER_CHANCE = 1.0  # ★テスト用に一時的に100%にしてある。確認できたら0.35に戻す
+WANTED_TIER_CHANCE = 0.35  # 有罪判決のうち、約35%がこの演出になる
 
 ROLE_META = {
     "defendant": {
