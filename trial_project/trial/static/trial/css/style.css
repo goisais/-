@@ -415,7 +415,7 @@ body {
 
 .gauge-row {
   position: absolute;
-  bottom: 40px;
+  bottom: 8px;
   left: 8px;
   right: 8px;
   display: flex;
