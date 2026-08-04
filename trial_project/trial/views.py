@@ -27,6 +27,8 @@ from trial.state import (
     parse_mmss_to_seconds,
     start_trial,
     reset_for_new_round,
+    get_or_create_profile,
+    get_points,
 )
 from trial.sockets import notify_participants_updated, notify_trial_started, start_phase_timer
 
@@ -42,6 +44,7 @@ def enter(request):
 
     username = (request.POST.get("username") or "").strip()
     role = request.POST.get("role")
+    player_token = (request.POST.get("player_token") or "").strip()
 
     if not username:
         return redirect("index")
@@ -57,6 +60,11 @@ def enter(request):
             },
         )
 
+    # メール登録などの手間をかけずに、ブラウザ紐付けの匿名トークンでポイントを
+    # 持ち越せるようにする。トークンが無い(古いブラウザ等)場合は毎回0ポイント扱い
+    get_or_create_profile(player_token, username)
+    request.session["player_token"] = player_token
+
     if role == "host":
         request.session["username"] = username
         request.session["is_host"] = True
@@ -66,6 +74,7 @@ def enter(request):
         # ホスト自身も参加者の1人（被告人になれるし、待機画面の一覧にも出る）
         if username not in lobby_state["participants"]:
             lobby_state["participants"].append(username)
+        lobby_state["player_tokens"][username] = player_token
         return redirect("host_setup")
 
     # 参加者として参加する場合は、招待コードの一致を確認する
@@ -89,6 +98,7 @@ def enter(request):
         lobby_state["participants"].append(username)
         # 既にホスト側の開廷準備画面が開かれていれば、そちらへリアルタイムで反映
         notify_participants_updated()
+    lobby_state["player_tokens"][username] = player_token
     return redirect("join_waiting")
 
 
@@ -140,6 +150,7 @@ def join_waiting(request):
         {
             "my_name": request.session["username"],
             "participants": lobby_state["participants"],
+            "my_points": get_points(request.session.get("player_token")),
         },
     )
 

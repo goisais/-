@@ -12,6 +12,41 @@ def generate_access_code():
     return f"{random.randint(0, 9999):04d}"
 
 
+# ---------- アカウント永続化(メール登録なしの匿名プロフィール) ----------
+# ブラウザのlocalStorageに保存された匿名トークン(player_token)ごとに、
+# 名前と永続ポイントを保持する。lobby_state(裁判ごとにリセットされる部屋の状態)とは
+# 別物で、ホストが新しく開廷してもここは初期化しない。
+# サーバーを再起動すると(lobby_stateと同じく)消える点は今のところ変わらない。
+player_profiles = {}  # player_token(str) -> {"name": str, "points": int}
+
+
+def get_or_create_profile(token, name):
+    """このブラウザ(token)のプロフィールを取得。無ければ新規作成(ポイント0から)。
+    名前は毎回の入室で最新のものに更新する(改名しても同じ持ち点を引き継げる)"""
+    if not token:
+        return None
+    profile = player_profiles.get(token)
+    if profile is None:
+        profile = {"name": name, "points": 0}
+        player_profiles[token] = profile
+    else:
+        profile["name"] = name
+    return profile
+
+
+def get_points(token):
+    profile = player_profiles.get(token)
+    return profile["points"] if profile else 0
+
+
+def award_points(token, amount):
+    """裁判終了後のランキング結果などで、永続ポイントを加算する"""
+    profile = player_profiles.get(token)
+    if profile:
+        profile["points"] += amount
+    return get_points(token)
+
+
 DEFAULT_PHASES = [
     {"key": "defendant", "label": "被告人陳述", "icon": "ti-microphone"},
     {"key": "prosecutor", "label": "検察質問", "icon": "ti-shield-half-filled"},
@@ -75,6 +110,7 @@ def make_initial_state():
         "access_code": "",  # ホストが開廷準備を始めるたびに新しく発行される4桁コード
         "host_name": "",  # ホストの名前（判決確定・次の審への進行などホスト限定操作の確認に使う）
         "participants": [],  # 参加者名の一覧（順番 = 参加した順）
+        "player_tokens": {},  # 名前 -> player_token（永続ポイントの加算先を引くのに使う）
         "case_name": "",
         "defendant": None,
         "phase_durations": {"defendant": 120, "prosecutor": 90, "defense": 90},

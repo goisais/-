@@ -12,8 +12,12 @@
 
     <!-- 名前入力とホスト/参加者の選択を1つのフォームにまとめている。
          誰でも名前を入れれば参加できる仕組みなので、事前登録や固定メンバーは無し。 -->
-    <form action="{% url 'enter' %}" method="post">
+    <form action="{% url 'enter' %}" method="post" id="login-form">
       {% csrf_token %}
+      <!-- メール登録などの手間なしで、ポイントを次の裁判にも持ち越せるように、
+           ブラウザに紐づく匿名トークンをこっそり発行してサーバーに送る。
+           同じブラウザで同じ名前を使う限り、ポイントが引き継がれる仕組み -->
+      <input type="hidden" name="player_token" id="player-token-input" value="" />
       {% if error %}
       <div style="margin: 0 16px; background: rgba(214, 69, 69, 0.15); border: 1px solid var(--danger); border-radius: 6px; padding: 8px 12px; font-size: 12px; color: var(--danger);">
         {{ error }}
@@ -56,4 +60,20 @@
     <div style="height: 18px;"></div>
   </div>
 </div>
+<script>
+  // このブラウザ用の匿名トークンを取得(無ければ発行して保存)し、フォームに埋め込む。
+  // メール登録などは一切不要で、同じブラウザ・同じ名前で入れば過去のポイントが続く。
+  (function () {
+    const STORAGE_KEY = "trial_player_token";
+    let token = localStorage.getItem(STORAGE_KEY);
+    if (!token) {
+      token = (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : "tok-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+      localStorage.setItem(STORAGE_KEY, token);
+    }
+    const input = document.getElementById("player-token-input");
+    if (input) input.value = token;
+  })();
+</script>
 {% endblock %}
