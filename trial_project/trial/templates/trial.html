@@ -22,14 +22,9 @@
       <div class="subtitle">{{ case_name }}</div>
       <!-- 同じブラウザの複数タブでテストすると、セッションが共有されて役割が混ざるので、
            今どの名前・役割でログイン中かここで確認できるようにしている -->
-<<<<<<< HEAD
-      <div class="subtitle" style="color: var(--gold);">ログイン中: {{ my_name }}（{{ my_role }}）{% if is_host %} ・ホスト{% endif
-        %}</div>
-=======
       <div class="subtitle" id="login-indicator" style="color: var(--gold);">ログイン中: {{ my_name }}（{{ my_role }}）{% if is_host %} ・ホスト{% endif %}</div>
       <!-- 5:5同数で2審・3審に進んだ場合だけ表示する審級インジケーター -->
       <div class="subtitle" id="round-indicator" style="color: var(--danger); font-weight: 600; display: {% if trial_round > 1 %}block{% else %}none{% endif %};">{% if trial_round > 1 %}第{{ trial_round }}審{% endif %}</div>
->>>>>>> origin/main
     </div>
 
     <!-- フェーズタイマー: サーバーが1秒ごとに進行させ、全員の画面に同じ残り時間を配信している -->
