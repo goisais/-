@@ -110,7 +110,7 @@
         {% endfor %}
       </div>
       <div class="comment-input-row">
-        <input type="text" id="comment-input" placeholder="コメントを入力…" onkeydown="if(event.key==='Enter') sendComment();" />
+        <input type="text" id="comment-input" placeholder="コメントを入力…" />
         <button aria-label="送信" onclick="sendComment()">
           <i class="ti ti-send-2"></i>
         </button>
@@ -185,6 +185,20 @@
     socket.emit("comment_send", { text, name: myName });
     input.value = "";
   }
+
+  // 日本語入力(IME)で変換を確定するときのEnterと、実際にコメントを送信する
+  // Enterが同じkeydownイベントとして飛んでくるため、区別しないと変換確定だけで
+  // 誤送信してしまう(そのあと本当のEnterでもう一度送られて二重送信になる)。
+  // isComposing(変換中かどうか)がtrueの間はEnterを無視することで防ぐ
+  const commentInput = document.getElementById("comment-input");
+  let isComposingComment = false;
+  commentInput.addEventListener("compositionstart", () => { isComposingComment = true; });
+  commentInput.addEventListener("compositionend", () => { isComposingComment = false; });
+  commentInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    if (isComposingComment || event.isComposing || event.keyCode === 229) return;
+    sendComment();
+  });
   socket.on("comment_new", (comment) => {
     const feed = document.getElementById("comment-feed");
     const item = document.createElement("div");
