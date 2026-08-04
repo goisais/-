@@ -203,8 +203,27 @@
   }
 
   function leaveTrial() {
+    // 役がついた瞬間(2審/3審のガチャで検察官/弁護人になった等)に、まだ古い表示のまま
+    // ボタンを押してしまうケースを防ぐため、送信前にも自分の役割を確認しておく
+    if (myRole !== "gallery" || isHost) {
+      updateLeaveButtonVisibility();
+      return;
+    }
+    const btn = document.getElementById("leave-trial-button");
+    if (btn) { btn.disabled = true; }
     socket.emit("leave_trial", { name: myName });
-    window.location.href = "{% url 'index' %}";
+    // ここでは即座に画面遷移しない。サーバーが実際に退出を許可した場合だけ
+    // (=自分宛のparticipant_leftイベントが届いた時だけ)ページを移動する。
+    // 役割が変わった直後などでサーバー側に拒否された場合、ボタンを押しても
+    // 何も起きず法廷画面に留まる(退出したのに検察官が消えて誰も進行できなくなる、
+    // という不具合を防ぐため)。拒否された場合に備えて、少し待っても
+    // 移動しなければボタンを元に戻す
+    setTimeout(() => {
+      if (btn && btn.disabled) {
+        btn.disabled = false;
+        updateLeaveButtonVisibility();
+      }
+    }, 1500);
   }
 
   // コメント欄に、審の進行などのお知らせをシステムメッセージとして流す
@@ -507,6 +526,11 @@
     const el = document.getElementById("viewer-count");
     if (el) el.textContent = data.viewer_count;
     addSystemMessage(`${data.name}さんが退出しました`);
+    // 自分の退出がサーバー側で実際に受理された時だけ、ここでページを移動する
+    if (data.name === myName) {
+      window.location.href = "{% url 'index' %}";
+      return;
+    }
   });
 
   // ---- WebRTC: 被告人の映像・検察官/弁護人の音声を配信/受信する ----
