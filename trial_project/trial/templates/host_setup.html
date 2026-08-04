@@ -22,7 +22,7 @@
       {% csrf_token %}
       <div class="field">
         <label for="case_name">裁判名</label>
-        <input type="text" id="case_name" name="case_name" placeholder="例：電車寝坊事件" />
+        <input type="text" id="case_name" name="case_name" placeholder="例：電車寝坊事件 (20字以内)" maxlength="20" required/>
       </div>
 
       <!-- 参加者は事前に固定せず、ログイン画面で「参加者として参加する」を押した人が
