@@ -377,6 +377,14 @@ body {
   border: 1px solid #2c1508;
 }
 
+/* videoを他の重なり要素(placeholder/tag/コメント弾幕など)と同じ絶対配置の
+   スタッキング順に乗せることで、z-indexが期待通りに効くようにする */
+.evidence-video video {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
 .evidence-video .placeholder {
   position: absolute;
   inset: 0;
@@ -420,13 +428,19 @@ body {
   overflow: hidden;
   pointer-events: none;
   z-index: 40;
+  /* <video>を再生していると、ブラウザ(特にSafari)がvideoだけを独立した
+     合成レイヤーとして扱い、z-indexを無視してvideoを最前面に描画してしまう
+     ことがある。このレイヤー自体も明示的に合成レイヤー化することで、
+     videoの上にちゃんと重なって見えるようにする */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .fly-comment {
   position: absolute;
   white-space: nowrap;
   color: #fff;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 700;
   will-change: transform;
 }

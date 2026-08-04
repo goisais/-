@@ -300,7 +300,8 @@
     feed.appendChild(item);
     feed.scrollTop = feed.scrollHeight;
 
-    spawnFlyingComment(`${comment.name}：${comment.text}`);
+    // 下のコメント欄に名前は出るので、流れるコメントは本文だけにする
+    spawnFlyingComment(comment.text);
   });
 
   // ---- ニコニコ動画風の弾幕コメント演出 ----
