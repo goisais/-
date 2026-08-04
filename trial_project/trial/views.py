@@ -46,6 +46,17 @@ def enter(request):
     if not username:
         return redirect("index")
 
+    # 同じ名前を禁止
+    if username in lobby_state["participants"]:
+        return render(
+            request,
+            "login.html",
+            {
+                "error": "その名前は既に使用されています。",
+                "username": username,
+            },
+        )
+
     if role == "host":
         request.session["username"] = username
         request.session["is_host"] = True
