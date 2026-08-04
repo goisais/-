@@ -413,6 +413,29 @@ body {
   background: rgba(250, 236, 231, 0.9);
 }
 
+/* ニコニコ動画風のコメント弾幕レイヤー: 配信映像の上を右から左に流れていく */
+.comment-fly-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.fly-comment {
+  position: absolute;
+  white-space: nowrap;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000;
+  will-change: transform;
+}
+
 .gauge-row {
   position: absolute;
   bottom: 40px;

@@ -59,6 +59,9 @@
         <div class="tag-defendant">被告人：{{ defendant_name }}</div>
         <div class="tag-evidence" id="speaking-tag" style="display: none;">発言中</div>
 
+        <!-- ニコニコ動画風、コメントが右から左に流れていく演出用のレイヤー -->
+        <div class="comment-fly-layer" id="comment-fly-layer"></div>
+
         <div class="gauge-row">
           <div class="gauge">
             <div class="gauge-label"><span>動揺度</span><span id="nervousness-value">{{ gauges.nervousness }}%</span></div>
@@ -296,7 +299,46 @@
     item.appendChild(document.createTextNode(comment.text));
     feed.appendChild(item);
     feed.scrollTop = feed.scrollHeight;
+
+    spawnFlyingComment(`${comment.name}：${comment.text}`);
   });
+
+  // ---- ニコニコ動画風の弾幕コメント演出 ----
+  // 配信映像の上を、新しく来たコメントが右から左に流れていく。
+  // レイヤーの横幅はレスポンシブで変わるので、CSSの固定keyframesではなく
+  // JSでその都度「レイヤー幅+自分の幅」ぶんtranslateXさせることで、
+  // どの画面サイズでも右端の外から左端の外まできちんと流れきるようにしている
+  const FLY_ROWS = 6; // 縦方向のレーン数(コメントが重なりにくくするため順番に振り分ける)
+  let flyRowCursor = 0;
+
+  function spawnFlyingComment(text) {
+    const layer = document.getElementById("comment-fly-layer");
+    if (!layer) return;
+
+    const el = document.createElement("div");
+    el.className = "fly-comment";
+    el.textContent = text;
+
+    const rowIndex = flyRowCursor % FLY_ROWS;
+    flyRowCursor++;
+    el.style.top = `${(rowIndex / FLY_ROWS) * 100}%`;
+
+    layer.appendChild(el);
+
+    const layerWidth = layer.clientWidth || 300;
+    const elWidth = el.offsetWidth || 100;
+    const distance = layerWidth + elWidth;
+    const duration = 6 + Math.random() * 2.5; // 6〜8.5秒かけてゆっくり流れる
+
+    el.style.left = `${layerWidth}px`; // 右端の外からスタート
+
+    requestAnimationFrame(() => {
+      el.style.transition = `transform ${duration}s linear`;
+      el.style.transform = `translateX(-${distance}px)`;
+    });
+
+    setTimeout(() => el.remove(), duration * 1000 + 300);
+  }
 
   // ---- フェーズ進行・ゲージ ----
   function formatTime(sec) {
