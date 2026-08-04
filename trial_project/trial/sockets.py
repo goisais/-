@@ -20,6 +20,9 @@ from trial.state import (
     current_phase_key,
     random_walk,
     determine_verdict,
+    advance_to_next_round,
+    select_judge,
+    judge_decide_verdict,
 )
 
 LOBBY_ROOM = "lobby"
@@ -108,6 +111,8 @@ def cast_vote(sid, data):
         return
     if not lobby_state["voting_open"]:
         return
+    if lobby_state["role_map"].get(name) == "defendant":
+        return  # 被告人は自分の裁判に投票できない
     if name in lobby_state["voters"]:
         return
     lobby_state["voters"].append(name)
@@ -131,16 +136,91 @@ def skip_phase(sid, data=None):
     _advance_phase()
 
 
+def _is_host(name):
+    return bool(name) and name == lobby_state.get("host_name")
+
+
 @sio.event
 def finalize_verdict(sid, data=None):
     """ホストが「判決を確定する」を押したときに呼ばれる。投票を締め切り、
-    有罪/無罪と（有罪なら）刑罰をランダムに決めて、全員を判決ページへ誘導する。"""
+    有罪/無罪と（有罪なら）刑罰をランダムに決めて、全員を判決ページへ誘導する。
+    同数(引き分け)だった場合は、3審目までなら次の審に進めるようにし、
+    3審目でも同数なら被告人以外からランダムに裁判長を選んで強制的に判決を下してもらう。"""
+    name = (data or {}).get("name") or ""
+    if not _is_host(name):
+        return
     if not lobby_state["trial_started"]:
         return
     if lobby_state["verdict_result"] is not None:
         return  # 二重確定防止
+
     result = determine_verdict()
+    if result is not None:
+        sio.emit("verdict_finalized", result, room=TRIAL_ROOM)
+        return
+
+    # 同数だった場合
+    round_num = lobby_state["trial_round"]
+    if round_num < 3:
+        sio.emit(
+            "verdict_tied",
+            {"round": round_num, "next_round": round_num + 1, "votes": lobby_state["votes"]},
+            room=TRIAL_ROOM,
+        )
+    else:
+        judge = select_judge()
+        sio.emit("judge_selected", {"judge_name": judge, "votes": lobby_state["votes"]}, room=TRIAL_ROOM)
+
+
+@sio.event
+def start_next_round(sid, data=None):
+    """同数だったときに、ホストが次の審(2審/3審)に進める。検察官・弁護人を再抽選し、
+    フェーズを最初からやり直す(2審=1分固定, 3審=30秒固定)。"""
+    name = (data or {}).get("name") or ""
+    if not _is_host(name):
+        return
+    if not lobby_state["trial_started"]:
+        return
+    info = advance_to_next_round()
+    sio.emit("round_started", info, room=TRIAL_ROOM)
+    start_phase_timer()
+
+
+@sio.event
+def judge_decide(sid, data=None):
+    """3審でも同数だったとき、裁判長役に選ばれた本人だけが判決を確定できる。"""
+    name = (data or {}).get("name") or ""
+    choice = (data or {}).get("choice")
+    if not name or name != lobby_state.get("judge_name"):
+        return  # 裁判長本人以外は無視
+    if choice not in ("guilty", "innocent"):
+        return
+    if lobby_state["verdict_result"] is not None:
+        return
+    result = judge_decide_verdict(choice)
     sio.emit("verdict_finalized", result, room=TRIAL_ROOM)
+
+
+@sio.event
+def leave_trial(sid, data=None):
+    """傍聴席(役割なし)の人だけが退出できる。被告人・検察官・弁護人・ホストは
+    裁判が終わるまで抜けられない。"""
+    name = (data or {}).get("name") or ""
+    if not name or _is_host(name):
+        return
+    if lobby_state["role_map"].get(name) != "gallery":
+        return
+    if name in lobby_state["participants"]:
+        lobby_state["participants"].remove(name)
+    lobby_state["role_map"].pop(name, None)
+    if sid in trial_peers:
+        peer = trial_peers.pop(sid)
+        sio.emit("trial_peer_left", {"sid": sid, "name": peer["name"], "role": peer["role"]}, room=TRIAL_ROOM)
+    sio.emit(
+        "participant_left",
+        {"name": name, "viewer_count": len(lobby_state["participants"])},
+        room=TRIAL_ROOM,
+    )
 
 
 @sio.event
