@@ -62,6 +62,7 @@ def enter(request):
         request.session["is_host"] = True
         # ホストが「ホストとして開廷する」を押すたびに、新しい部屋(コード)として作り直す
         reset_for_new_round()
+        lobby_state["host_name"] = username
         # ホスト自身も参加者の1人（被告人になれるし、待機画面の一覧にも出る）
         if username not in lobby_state["participants"]:
             lobby_state["participants"].append(username)
@@ -199,6 +200,8 @@ def trial(request):
             "my_name": my_name,
             "my_role": my_role,
             "is_host": is_host,
+            "trial_round": state["trial_round"],
+            "judge_name": state["judge_name"],
         },
     )
 

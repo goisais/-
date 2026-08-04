@@ -73,6 +73,7 @@ ROLE_META = {
 def make_initial_state():
     return {
         "access_code": "",  # ホストが開廷準備を始めるたびに新しく発行される4桁コード
+        "host_name": "",  # ホストの名前（判決確定・次の審への進行などホスト限定操作の確認に使う）
         "participants": [],  # 参加者名の一覧（順番 = 参加した順）
         "case_name": "",
         "defendant": None,
@@ -89,6 +90,8 @@ def make_initial_state():
         "voting_open": False,
         "votes": {"guilty": 0, "innocent": 0},
         "voters": [],  # 投票済みの名前一覧（二重投票防止）
+        "trial_round": 1,  # 1審/2審/3審
+        "judge_name": None,  # 3審でも同数だったとき、強制的に判決を下す裁判長役の名前
     }
 
 
@@ -123,13 +126,24 @@ def reset_for_new_round():
     return lobby_state["access_code"]
 
 
-def start_trial(case_name, defendant):
-    """被告人以外の参加者から検察官・弁護人をガチャで抽選し、状態を確定する"""
+def _draw_prosecutor_and_defense(defendant, prev_prosecutor=None, prev_defense=None):
+    """被告人以外の参加者から検察官・弁護人をガチャで抽選する。
+    ちょうど2人しか候補がいない(参加者が被告人含めて3人だけ)場合にランダム抽選すると
+    「たまたま同じ組み合わせ」になることがあるので、前回の担当者2人がそのまま今回の
+    候補2人と一致するときは、必ず入れ替える"""
     others = [p for p in lobby_state["participants"] if p != defendant]
-    random.shuffle(others)
-    prosecutor = others.pop() if others else None
-    defense = others.pop() if others else None
 
+    if len(others) == 2 and prev_prosecutor and prev_defense and set(others) == {prev_prosecutor, prev_defense}:
+        return prev_defense, prev_prosecutor
+
+    shuffled = others[:]
+    random.shuffle(shuffled)
+    prosecutor = shuffled.pop() if shuffled else None
+    defense = shuffled.pop() if shuffled else None
+    return prosecutor, defense
+
+
+def _build_role_map(defendant, prosecutor, defense):
     role_map = {defendant: "defendant"}
     if prosecutor:
         role_map[prosecutor] = "prosecutor"
@@ -137,6 +151,13 @@ def start_trial(case_name, defendant):
         role_map[defense] = "defense"
     for p in lobby_state["participants"]:
         role_map.setdefault(p, "gallery")
+    return role_map
+
+
+def start_trial(case_name, defendant):
+    """被告人以外の参加者から検察官・弁護人をガチャで抽選し、状態を確定する"""
+    prosecutor, defense = _draw_prosecutor_and_defense(defendant)
+    role_map = _build_role_map(defendant, prosecutor, defense)
 
     lobby_state.update(
         {
@@ -156,6 +177,8 @@ def start_trial(case_name, defendant):
             "voters": [],
             "verdict_result": None,  # {"outcome": "guilty"/"innocent", "sentence": str|None, "tier": "normal"/"wanted"}
             "defendant_face_capture": None,  # 被告人の顔切り抜き画像(data URL文字列)
+            "trial_round": 1,
+            "judge_name": None,
         }
     )
 
@@ -172,15 +195,8 @@ def random_walk(current, spread=8):
     return max(0, min(100, current + delta))
 
 
-def determine_verdict():
-    """投票を締め切って、有罪/無罪と（有罪なら）刑罰をランダムに決める。
-    有罪の中でもごく稀に、指名手配ポスター風の「歴史的大犯罪」演出(tier="wanted")になる。"""
-    votes = lobby_state["votes"]
-    if votes["guilty"] == votes["innocent"]:
-        outcome = random.choice(["guilty", "innocent"])
-    else:
-        outcome = "guilty" if votes["guilty"] > votes["innocent"] else "innocent"
-
+def _build_verdict_result(outcome):
+    """outcome("guilty"/"innocent")を確定させて、有罪なら刑罰(・指名手配演出かどうか)も決める"""
     tier = "normal"
     sentence = None
     if outcome == "guilty":
@@ -194,3 +210,69 @@ def determine_verdict():
     lobby_state["verdict_result"] = result
     lobby_state["voting_open"] = False
     return result
+
+
+def determine_verdict():
+    """投票を締め切って、有罪/無罪と（有罪なら）刑罰をランダムに決める。
+    有罪の中でもごく稀に、指名手配ポスター風の「歴史的大犯罪」演出(tier="wanted")になる。
+    同数(引き分け)の場合はNoneを返す。呼び出し側で次の審に進めるか、
+    3審目なら裁判長を選ぶかを判断する"""
+    votes = lobby_state["votes"]
+    if votes["guilty"] == votes["innocent"]:
+        return None
+    outcome = "guilty" if votes["guilty"] > votes["innocent"] else "innocent"
+    return _build_verdict_result(outcome)
+
+
+def judge_decide_verdict(outcome):
+    """3審でも同数だったとき、裁判長役に選ばれた人が代わりに判決を下す"""
+    return _build_verdict_result(outcome)
+
+
+# 2審・3審のフェーズ時間は毎回固定(ホストが設定した時間は1審だけに使う)
+ROUND_PHASE_SECONDS = {2: 60, 3: 30}
+
+
+def advance_to_next_round():
+    """判決が同数だったとき、ホストが次の審に進める。検察官・弁護人を再抽選し、
+    フェーズを最初から(2審=1分固定、3審=30秒固定)やり直す。"""
+    lobby_state["trial_round"] += 1
+    round_num = lobby_state["trial_round"]
+    duration = ROUND_PHASE_SECONDS.get(round_num, 30)
+
+    defendant = lobby_state["defendant"]
+    prosecutor, defense = _draw_prosecutor_and_defense(
+        defendant, lobby_state["prosecutor"], lobby_state["defense"]
+    )
+    role_map = _build_role_map(defendant, prosecutor, defense)
+
+    lobby_state.update(
+        {
+            "prosecutor": prosecutor,
+            "defense": defense,
+            "role_map": role_map,
+            "phase_durations": {"defendant": duration, "prosecutor": duration, "defense": duration},
+            "phase_index": 0,
+            "phase_remaining": duration,
+            "gauges": {"nervousness": 50, "suspicion": 50},
+            "voting_open": False,
+            "votes": {"guilty": 0, "innocent": 0},
+            "voters": [],
+            "verdict_result": None,
+        }
+    )
+    return {
+        "round": round_num,
+        "prosecutor": prosecutor,
+        "defense": defense,
+        "duration": duration,
+        "role_map": role_map,
+    }
+
+
+def select_judge():
+    """3審でも同数だったとき、被告人以外の参加者からランダムに裁判長を選ぶ"""
+    candidates = [p for p in lobby_state["participants"] if p != lobby_state["defendant"]]
+    judge = random.choice(candidates) if candidates else None
+    lobby_state["judge_name"] = judge
+    return judge
