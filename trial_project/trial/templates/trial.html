@@ -22,23 +22,26 @@
       <div class="subtitle">{{ case_name }}</div>
       <!-- 同じブラウザの複数タブでテストすると、セッションが共有されて役割が混ざるので、
            今どの名前・役割でログイン中かここで確認できるようにしている -->
-      <div class="subtitle" style="color: var(--gold);">ログイン中: {{ my_name }}（{{ my_role }}）{% if is_host %} ・ホスト{% endif %}</div>
+      <div class="subtitle" style="color: var(--gold);">ログイン中: {{ my_name }}（{{ my_role }}）{% if is_host %} ・ホスト{% endif
+        %}</div>
     </div>
 
     <!-- フェーズタイマー: サーバーが1秒ごとに進行させ、全員の画面に同じ残り時間を配信している -->
     <div class="phase-row">
       {% for ph in phases %}
-      <div class="phase-card {% if ph.active %}active{% endif %}" id="phase-{{ forloop.counter0 }}" data-duration="{{ ph.duration }}">
+      <div class="phase-card {% if ph.active %}active{% endif %}" id="phase-{{ forloop.counter0 }}"
+        data-duration="{{ ph.duration }}">
         <div class="phase-label">
           <i class="ti {{ ph.icon }}"></i>{{ ph.label }}
         </div>
         <div class="phase-time" data-remaining="{{ ph.remaining_seconds }}">{{ ph.time }}</div>
-        <div class="phase-bar" {% if not ph.active %}style="visibility: hidden;"{% endif %}>
+        <div class="phase-bar" {% if not ph.active %}style="visibility: hidden;" {% endif %}>
           <div class="phase-bar-fill" style="width: {% widthratio ph.remaining_seconds ph.duration 100 %}%;"></div>
         </div>
         <!-- 話し終わった本人だけが、自分の担当フェーズを早送りできるボタン。
              普段は空いてるスペースに小さく置いて、自分の番の時だけ出す -->
-        <button class="phase-skip-btn" data-phase-index="{{ forloop.counter0 }}" data-phase-role="{{ ph.key }}" onclick="skipPhase()" style="display: none;">
+        <button class="phase-skip-btn" data-phase-index="{{ forloop.counter0 }}" data-phase-role="{{ ph.key }}"
+          onclick="skipPhase()" style="display: none;">
           <i class="ti ti-player-skip-forward"></i> 話し終わった
         </button>
       </div>
@@ -49,7 +52,8 @@
          検察質問・弁護士弁護のフェーズ中は、その人の声だけが重なって聞こえる -->
     <div class="evidence-frame">
       <div class="evidence-video">
-        <video id="defendant-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; display: none;"></video>
+        <video id="defendant-video" autoplay playsinline
+          style="width: 100%; height: 100%; object-fit: cover; display: none;"></video>
         <audio id="speaker-audio" autoplay></audio>
         <div class="placeholder" id="video-placeholder">
           <i class="ti ti-user"></i>
@@ -61,13 +65,15 @@
           <div class="gauge">
             <div class="gauge-label"><span>動揺度</span><span id="nervousness-value">{{ gauges.nervousness }}%</span></div>
             <div class="gauge-track">
-              <div class="gauge-fill" id="nervousness-fill" style="width: {{ gauges.nervousness }}%; background: var(--danger);"></div>
+              <div class="gauge-fill" id="nervousness-fill"
+                style="width: {{ gauges.nervousness }}%; background: var(--danger);"></div>
             </div>
           </div>
           <div class="gauge">
             <div class="gauge-label"><span>あやしさ</span><span id="suspicion-value">{{ gauges.suspicion }}%</span></div>
             <div class="gauge-track">
-              <div class="gauge-fill" id="suspicion-fill" style="width: {{ gauges.suspicion }}%; background: var(--gold);"></div>
+              <div class="gauge-fill" id="suspicion-fill"
+                style="width: {{ gauges.suspicion }}%; background: var(--gold);"></div>
             </div>
           </div>
         </div>
@@ -121,21 +127,27 @@
     <div class="verdict-box">
       <div class="verdict-title">判決</div>
       <div class="verdict-labels">
-        <span>有罪 <span id="guilty-pct">{{ guilty_pct }}</span>%</span><span>無罪 <span id="innocent-pct">{{ innocent_pct }}</span>%</span>
+        <span>有罪 <span id="guilty-pct">{{ guilty_pct }}</span>%</span><span>無罪 <span id="innocent-pct">{{ innocent_pct
+            }}</span>%</span>
       </div>
       <div class="verdict-bar">
         <div id="guilty-bar" style="width: {{ guilty_pct }}%; background: var(--danger);"></div>
         <div id="innocent-bar" style="width: {{ innocent_pct }}%; background: var(--success);"></div>
       </div>
-      <div id="voting-buttons" style="display: {% if voting_open %}flex{% else %}none{% endif %}; gap: 8px; margin-top: 10px;">
-        <button onclick="castVote('guilty')" style="flex: 1; background: var(--danger); color: var(--on-danger); border: none; border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">有罪に投票</button>
-        <button onclick="castVote('innocent')" style="flex: 1; background: var(--success); color: #fff; border: none; border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">無罪に投票</button>
+      <div id="voting-buttons"
+        style="display: {% if voting_open %}flex{% else %}none{% endif %}; gap: 8px; margin-top: 10px;">
+        <button onclick="castVote('guilty')"
+          style="flex: 1; background: var(--danger); color: var(--on-danger); border: none; border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">有罪に投票</button>
+        <button onclick="castVote('innocent')"
+          style="flex: 1; background: var(--success); color: #fff; border: none; border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">無罪に投票</button>
       </div>
-      <div id="voting-closed-note" style="text-align: center; font-size: 11px; color: var(--text-brown-muted); margin-top: 8px; display: {% if voting_open %}none{% else %}block{% endif %};">
+      <div id="voting-closed-note"
+        style="text-align: center; font-size: 11px; color: var(--text-brown-muted); margin-top: 8px; display: {% if voting_open %}none{% else %}block{% endif %};">
         全フェーズが終わると投票できます
       </div>
       {% if is_host %}
-      <button id="finalize-verdict-button" onclick="finalizeVerdict()" style="display: {% if voting_open %}block{% else %}none{% endif %}; width: 100%; margin-top: 10px; background: var(--wood-dark); color: #fff; border: none; border-radius: 6px; padding: 10px; font-size: 13px; font-weight: 600;">
+      <button id="finalize-verdict-button" onclick="finalizeVerdict()"
+        style="display: {% if voting_open %}block{% else %}none{% endif %}; width: 100%; margin-top: 10px; background: var(--wood-dark); color: #fff; border: none; border-radius: 6px; padding: 10px; font-size: 13px; font-weight: 600;">
         判決を確定する（ホスト操作）
       </button>
       {% endif %}
@@ -385,7 +397,7 @@
       videoEl.muted = true;
       videoEl.style.display = "block";
       document.getElementById("video-placeholder").style.display = "none";
-      videoEl.play().catch(() => {});
+      videoEl.play().catch(() => { });
       maybeInitFaceCapture();
     }
     Object.keys(knownPeers).forEach((sid) => connectToViewer(sid));
@@ -422,11 +434,11 @@
       videoEl.srcObject = stream;
       videoEl.style.display = "block";
       document.getElementById("video-placeholder").style.display = "none";
-      videoEl.play().catch(() => {});
+      videoEl.play().catch(() => { });
     } else {
       const audioEl = document.getElementById("speaker-audio");
       audioEl.srcObject = stream;
-      audioEl.play().catch(() => {});
+      audioEl.play().catch(() => { });
       const tag = document.getElementById("speaking-tag");
       tag.textContent = (peer ? peer.name : "発言者") + " 発言中";
       tag.style.display = "block";
