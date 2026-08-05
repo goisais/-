@@ -1,14 +1,32 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}言い訳裁判 - ログイン{% endblock %}
 {% block content %}
 <div class="phone-frame">
   <div class="screen">
 
     <div style="padding: 28px 20px 10px; text-align: center;">
+
+      <!-- ハンマーのマーク（そのまま残す） -->
       <i class="ti ti-gavel" style="font-size: 32px; color: var(--gold);"></i>
-      <div style="font-size: 18px; font-weight: 500; color: var(--cream); margin-top: 8px;">言い訳裁判</div>
-      <div style="font-size: 11px; color: var(--text-cream-muted); margin-top: 4px;">くだらないほど盛り上がる、模擬裁判エンタメ</div>
-    </div>
+
+      <!-- 文字を画像に変更 -->
+      <img
+        src="{% static 'trial/img/logo.png' %}"
+        alt="言い訳裁判"
+        style="
+          display: block;
+          width: 90%;
+          max-width: 200px;
+          height: auto;
+          margin: 8px auto 0;
+        "
+      >
+  <!-- キャッチコピー -->
+  <div style="font-size: 11px; color: var(--text-cream-muted); margin-top: 8px;">
+    くだらないほど盛り上がる、模擬裁判エンタメ
+  </div>
+</div>
 
     <!-- 名前入力とホスト/参加者の選択を1つのフォームにまとめている。
          誰でも名前を入れれば参加できる仕組みなので、事前登録や固定メンバーは無し。 -->
