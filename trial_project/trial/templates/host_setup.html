@@ -63,7 +63,7 @@
       </div>
 
       <div class="section-pad">
-        <button type="submit" class="btn-primary">
+        <button type="submit" class="btn-primary" id="start-button">
           <i class="ti ti-gavel" style="font-size: 17px;"></i>
           開廷する
         </button>
@@ -95,6 +95,7 @@
       container.appendChild(chip);
     });
     emptyNote.style.display = list.length ? "none" : "block";
+    updateStartButton(list);
   }
 
   function selectDefendant(chipEl) {
@@ -115,5 +116,25 @@
       alert("被告人を参加者の中から選んでください");
     }
   });
+
+  function updateStartButton(participants) {
+    const button = document.getElementById("start-button");
+
+      if (participants.length < 3) {
+        button.disabled = true;
+        button.textContent = "3人以上で開廷できます";
+      } else {
+        button.disabled = false;
+        button.innerHTML = `
+          <i class="ti ti-gavel" style="font-size:17px;"></i>
+          開廷する
+        `;
+      }
+    }
+  updateStartButton([
+    {% for p in participants %}
+      "{{ p }}",
+    {% endfor %}
+  ]);
 </script>
 {% endblock %}
