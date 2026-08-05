@@ -10,4 +10,5 @@ urlpatterns = [
     path("role-reveal", views.role_reveal, name="role_reveal"),
     path("trial", views.trial, name="trial"),
     path("verdict", views.verdict, name="verdict"),
+    path("enter-court", views.enter_court, name="enter_court"),
 ]

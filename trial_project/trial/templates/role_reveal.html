@@ -13,8 +13,10 @@
 
     <div class="reveal-center">
       <div class="pre-label">あなたの役割は…</div>
-      <div class="role-circle" style="border: 3px solid {% if role.accent == 'danger' %}var(--danger){% else %}var(--accent-blue){% endif %};">
-        <i class="ti {{ role.icon }}" style="color: {% if role.accent == 'danger' %}var(--danger){% else %}var(--accent-blue){% endif %};"></i>
+      <div class="role-circle"
+        style="border: 3px solid {% if role.accent == 'danger' %}var(--danger){% else %}var(--accent-blue){% endif %};">
+        <i class="ti {{ role.icon }}"
+          style="color: {% if role.accent == 'danger' %}var(--danger){% else %}var(--accent-blue){% endif %};"></i>
       </div>
       <div class="role-name">{{ role.label }}</div>
       <div class="role-desc">{{ role.description }}</div>
@@ -22,9 +24,12 @@
 
     <div class="section-pad" style="padding-top: 0;">
       <!-- 入廷すると法廷配信画面（ホスト/参加者共通）へ -->
-      <a href="/trial" class="btn-primary" style="text-decoration: none;">入廷する</a>
-    </div>
+      <a href="/enter-court" class="btn-primary">
+        入廷する
+      </a>
+      <!-- <a href="/trial" class="btn-primary" style="text-decoration: none;">入廷する</a>
+    </div> -->
 
+    </div>
   </div>
-</div>
-{% endblock %}
+  {% endblock %}
