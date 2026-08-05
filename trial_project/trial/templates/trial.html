@@ -22,9 +22,20 @@
       <div class="subtitle">{{ case_name }}</div>
       <!-- 同じブラウザの複数タブでテストすると、セッションが共有されて役割が混ざるので、
            今どの名前・役割でログイン中かここで確認できるようにしている -->
-      <div class="subtitle" id="login-indicator" style="color: var(--gold);">ログイン中: {{ my_name }}（{{ my_role }}）{% if is_host %} ・ホスト{% endif %}</div>
+      <div class="subtitle"
+          id="login-indicator"
+          style="color: var(--gold);">
+          ログイン中:
+          {{ my_name }}
+          （{{ my_role }}）
+          {% if is_host %}
+              ・ホスト
+          {% endif %}
+      </div>
       <!-- 5:5同数で2審・3審に進んだ場合だけ表示する審級インジケーター -->
-      <div class="subtitle" id="round-indicator" style="color: var(--danger); font-weight: 600; display: {% if trial_round > 1 %}block{% else %}none{% endif %};">{% if trial_round > 1 %}第{{ trial_round }}審{% endif %}</div>
+      <div class="subtitle" id="round-indicator"
+        style="color: var(--danger); font-weight: 600; display: {% if trial_round > 1 %}block{% else %}none{% endif %};">
+        {% if trial_round > 1 %}第{{ trial_round }}審{% endif %}</div>
     </div>
 
     <!-- フェーズタイマー: サーバーが1秒ごとに進行させ、全員の画面に同じ残り時間を配信している -->
@@ -128,7 +139,8 @@
     <div class="verdict-box">
       <div class="verdict-title">判決</div>
       <div class="verdict-labels">
-        <span>有罪 <span id="guilty-pct">{{ guilty_pct }}</span>%</span><span>無罪 <span id="innocent-pct">{{ innocent_pct}}</span>%</span>
+        <span>有罪 <span id="guilty-pct">{{ guilty_pct }}</span>%</span><span>無罪 <span id="innocent-pct">{{
+            innocent_pct}}</span>%</span>
       </div>
       <div class="verdict-bar">
         <div id="guilty-bar" style="width: {{ guilty_pct }}%; background: var(--danger);"></div>
@@ -146,12 +158,16 @@
         全フェーズが終わると投票できます
       </div>
       <!-- 同数(引き分け)になったときのお知らせ。3審同数のときは裁判長発表にも使う -->
-      <div id="tie-banner" style="display: none; text-align: center; font-size: 12px; color: var(--wood-dark); margin-top: 8px; font-weight: 600;"></div>
+      <div id="tie-banner"
+        style="display: none; text-align: center; font-size: 12px; color: var(--wood-dark); margin-top: 8px; font-weight: 600;">
+      </div>
 
       <!-- 裁判長役に選ばれた本人だけに出る、強制判決の2択ボタン -->
       <div id="judge-decide-buttons" style="display: none; gap: 8px; margin-top: 10px;">
-        <button onclick="judgeDecide('guilty')" style="flex: 1; background: var(--danger); color: var(--on-danger); border: none; border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">有罪と判決する</button>
-        <button onclick="judgeDecide('innocent')" style="flex: 1; background: var(--success); color: #fff; border: none; border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">無罪と判決する</button>
+        <button onclick="judgeDecide('guilty')"
+          style="flex: 1; background: var(--danger); color: var(--on-danger); border: none; border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">有罪と判決する</button>
+        <button onclick="judgeDecide('innocent')"
+          style="flex: 1; background: var(--success); color: #fff; border: none; border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">無罪と判決する</button>
       </div>
 
       {% if is_host %}
@@ -160,7 +176,8 @@
         判決を確定する（ホスト操作）
       </button>
       <!-- 同数だったとき、ホストだけがここを押して次の審(2審/3審)に進める -->
-      <button id="next-round-button" onclick="startNextRound()" style="display: none; width: 100%; margin-top: 10px; background: var(--danger-dark); color: #fff; border: none; border-radius: 6px; padding: 10px; font-size: 13px; font-weight: 600;">
+      <button id="next-round-button" onclick="startNextRound()"
+        style="display: none; width: 100%; margin-top: 10px; background: var(--danger-dark); color: #fff; border: none; border-radius: 6px; padding: 10px; font-size: 13px; font-weight: 600;">
         次の審に進む（ホスト操作）
       </button>
       {% endif %}
@@ -168,7 +185,8 @@
 
     <!-- 傍聴席(役割なし)の人だけが押せる退出ボタン。被告人・検察官・弁護人・ホストは
          裁判が終わるまで抜けられない -->
-    <button id="leave-trial-button" onclick="leaveTrial()" style="display: {% if my_role == 'gallery' and not is_host %}block{% else %}none{% endif %}; width: 100%; margin-top: 10px; background: transparent; color: var(--text-brown-muted); border: 1px solid var(--text-brown-muted); border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 500;">
+    <button id="leave-trial-button" onclick="leaveTrial()"
+      style="display: {% if my_role == 'gallery' and not is_host %}block{% else %}none{% endif %}; width: 100%; margin-top: 10px; background: transparent; color: var(--text-brown-muted); border: 1px solid var(--text-brown-muted); border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 500;">
       <i class="ti ti-door-exit"></i> 退出する
     </button>
 
@@ -185,7 +203,7 @@
   // 2審・3審に進むたびに検察官/弁護人が再抽選されて役割が変わりうるので、letにしている
   let myRole = "{{ my_role|escapejs }}";
   const isHost = {{ is_host|yesno:"true,false" }};
-  const initialJudgeName = {% if judge_name %}"{{ judge_name|escapejs }}"{% else %}null{% endif %};
+  const initialJudgeName = {% if judge_name %}"{{ judge_name|escapejs }}"{% else %} null{% endif %};
   socket.emit("join_trial", { name: myName });
 
   let hasVoted = false;
@@ -595,6 +613,7 @@
       document.getElementById("video-placeholder").style.display = "none";
       videoEl.play().catch(() => { });
       maybeInitFaceCapture();
+      startFaceAnalysis();
     }
     Object.keys(knownPeers).forEach((sid) => connectToViewer(sid));
   }
@@ -764,4 +783,6 @@
     socket.emit("face_capture", { image: canvas.toDataURL("image/jpeg", 0.85) });
   }
 </script>
+<script type="module" src="{% static 'trial/js/mediapipe.js' %}"></script>
+<script type="module" src="{% static 'trial/js/face_analysis.js' %}"></script>
 {% endblock %}

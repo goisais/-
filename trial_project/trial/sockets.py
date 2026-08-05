@@ -30,7 +30,11 @@ TRIAL_ROOM = "trial"
 
 # 顔切り抜き画像(data URL)をSocket.IO経由で送るので、デフォルトの受信上限だと
 # 弾かれることがある。少し余裕を持たせておく(だいたい数百KB〜1MB程度を想定)。
-sio = socketio.Server(async_mode="threading", cors_allowed_origins="*", max_http_buffer_size=5_000_000)
+sio = socketio.Server(
+    async_mode="eventlet",
+    cors_allowed_origins="*",
+    max_http_buffer_size=5_000_000
+)
 
 # sid -> {"name": str, "role": str} 法廷配信画面に今いる人（WebRTCの接続相手探しに使う）
 trial_peers = {}
