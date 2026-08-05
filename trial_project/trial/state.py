@@ -28,6 +28,9 @@ GIFT_ASSETS = [f"gift_{i:02d}.mp4" for i in range(1, 16)]
 player_profiles = {}  # player_token(str) -> {"name": str, "points": int}
 
 
+GALLERY_ALLOCATION = 10  # 傍聴席に毎裁判平等に配当される「裁判内ポイント」
+
+
 def get_or_create_profile(token, name):
     """このブラウザ(token)のプロフィールを取得。無ければ新規作成(ポイント0から)。
     名前は毎回の入室で最新のものに更新する(改名しても同じ持ち点を引き継げる)"""
@@ -136,6 +139,8 @@ def make_initial_state():
         "voters": [],  # 投票済みの名前一覧（二重投票防止）
         "trial_round": 1,  # 1審/2審/3審
         "judge_name": None,  # 3審でも同数だったとき、強制的に判決を下す裁判長役の名前
+        "wallets": {},  # 傍聴席の名前 -> 裁判内ポイント残高(毎裁判10pからスタート)
+        "bets": {},  # 傍聴席の名前 -> {"choice": "guilty"/"innocent", "amount": int}
     }
 
 
@@ -198,6 +203,13 @@ def _build_role_map(defendant, prosecutor, defense):
     return role_map
 
 
+def _init_gallery_wallets(role_map):
+    """傍聴席(役職なし)の全員に、毎裁判平等にGALLERY_ALLOCATION(=10p)を配当する。
+    このポイントは、有罪/無罪への賭けと投げ銭妨害の両方に使う「裁判内だけの持ち点」で、
+    次の裁判には持ち越さない(持ち越すのはランキング結果でもらえる永続ポイントの方)"""
+    return {name: GALLERY_ALLOCATION for name, role in role_map.items() if role == "gallery"}
+
+
 def start_trial(case_name, defendant):
     """被告人以外の参加者から検察官・弁護人をガチャで抽選し、状態を確定する"""
     prosecutor, defense = _draw_prosecutor_and_defense(defendant)
@@ -223,6 +235,8 @@ def start_trial(case_name, defendant):
             "defendant_face_capture": None,  # 被告人の顔切り抜き画像(data URL文字列)
             "trial_round": 1,
             "judge_name": None,
+            "wallets": _init_gallery_wallets(role_map),
+            "bets": {},
         }
     )
 
@@ -239,6 +253,43 @@ def random_walk(current, spread=8):
     return max(0, min(100, current + delta))
 
 
+def place_bet(name, choice, amount):
+    """傍聴席が、有罪/無罪のどちらに賭けるかを決める。的中で2倍、外れで没収。
+    判決を決める投票と同じ人が同じ裁判で両方やると「自分が得する方に投票する」が
+    できてしまうので、賭けた人は投票できないようにする(cast_vote側でチェックする)。
+    戻り値: (成功したか, エラーメッセージ or 更新後の残高)"""
+    if choice not in ("guilty", "innocent"):
+        return False, "invalid_choice"
+    if lobby_state["role_map"].get(name) != "gallery":
+        return False, "not_gallery"  # 役職がある人は裁判内ウォレットを持たない
+    if lobby_state["voting_open"]:
+        return False, "betting_closed"  # 投票が始まったら賭けは締め切り
+    if name in lobby_state["bets"]:
+        return False, "already_bet"  # 1裁判につき1回だけ
+    if name in lobby_state["voters"]:
+        return False, "already_voted"  # 投票した人はもう賭けられない(念のため)
+    try:
+        amount = int(amount)
+    except (TypeError, ValueError):
+        return False, "invalid_amount"
+    balance = lobby_state["wallets"].get(name, 0)
+    if amount <= 0 or amount > balance:
+        return False, "insufficient_balance"
+
+    lobby_state["wallets"][name] = balance - amount
+    lobby_state["bets"][name] = {"choice": choice, "amount": amount}
+    return True, lobby_state["wallets"][name]
+
+
+def _resolve_bets(outcome):
+    """判決確定時に、傍聴席の賭けを清算する。的中者にはamountの2倍を払い戻す
+    (賭けた時点で残高からamountを引いてあるので、勝てば実質+amount、
+    負ければ賭けた分がそのまま没収される)"""
+    for name, bet in lobby_state["bets"].items():
+        if bet["choice"] == outcome:
+            lobby_state["wallets"][name] = lobby_state["wallets"].get(name, 0) + bet["amount"] * 2
+
+
 def _build_verdict_result(outcome):
     """outcome("guilty"/"innocent")を確定させて、有罪なら刑罰(・指名手配演出かどうか)も決める"""
     tier = "normal"
@@ -249,6 +300,8 @@ def _build_verdict_result(outcome):
             sentence = random.choice(WANTED_TITLES)
         else:
             sentence = random_guilty_sentence()
+
+    _resolve_bets(outcome)
 
     result = {"outcome": outcome, "sentence": sentence, "tier": tier}
     lobby_state["verdict_result"] = result
@@ -303,6 +356,8 @@ def advance_to_next_round():
             "votes": {"guilty": 0, "innocent": 0},
             "voters": [],
             "verdict_result": None,
+            "wallets": _init_gallery_wallets(role_map),
+            "bets": {},
         }
     )
     return {

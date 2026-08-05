@@ -23,6 +23,7 @@ from trial.state import (
     advance_to_next_round,
     select_judge,
     judge_decide_verdict,
+    place_bet as _place_bet,
 )
 
 LOBBY_ROOM = "lobby"
@@ -72,7 +73,7 @@ def join_trial(sid, data=None):
     # 新しく入ってきた人を、既にいる全員に伝える
     sio.emit("trial_peer_joined", {"sid": sid, "name": name, "role": role}, room=TRIAL_ROOM, skip_sid=sid)
 
-    # 現在のフェーズ・ゲージ・判決の状態を追いつかせる
+    # 現在のフェーズ・ゲージ・判決の状態を追いつかせる(ウォレット残高は本人の分だけ)
     sio.emit(
         "state_sync",
         {
@@ -81,6 +82,8 @@ def join_trial(sid, data=None):
             "gauges": lobby_state["gauges"],
             "voting_open": lobby_state["voting_open"],
             "votes": lobby_state["votes"],
+            "wallet_balance": lobby_state["wallets"].get(name),
+            "already_bet": name in lobby_state["bets"],
         },
         to=sid,
     )
@@ -105,19 +108,44 @@ def objection(sid):
 
 @sio.event
 def cast_vote(sid, data):
+    """判決投票。被告人・検察官・弁護人は「自分が勝つ方」に入れられてしまうので
+    投票できない(=傍聴席だけが投票できる)。さらに、有罪/無罪に賭けた人は
+    その賭けが的中するように投票してしまえるので、賭けた人も投票できないようにする"""
     name = (data or {}).get("name") or "匿名"
     choice = (data or {}).get("choice")
     if choice not in ("guilty", "innocent"):
         return
     if not lobby_state["voting_open"]:
         return
-    if lobby_state["role_map"].get(name) == "defendant":
-        return  # 被告人は自分の裁判に投票できない
+    if lobby_state["role_map"].get(name) != "gallery":
+        return  # 傍聴席以外(被告人・検察官・弁護人)は自分の裁判に投票できない
+    if name in lobby_state["bets"]:
+        return  # 賭けた人は投票できない(投票結果を自分の得のために操作できてしまうため)
     if name in lobby_state["voters"]:
         return
     lobby_state["voters"].append(name)
     lobby_state["votes"][choice] += 1
     sio.emit("verdict_update", {"votes": lobby_state["votes"]}, room=TRIAL_ROOM)
+
+
+@sio.event
+def place_bet(sid, data):
+    """傍聴席が、有罪/無罪のどちらに賭けるか(掛け金つき)を決める。投票開始前まで。
+    ここで賭けた人はcast_vote側で投票できなくなる(利益相反防止)"""
+    name = (data or {}).get("name") or ""
+    choice = (data or {}).get("choice")
+    amount = (data or {}).get("amount")
+    if not name:
+        return
+    ok, result = _place_bet(name, choice, amount)
+    if ok:
+        sio.emit(
+            "bet_placed",
+            {"name": name, "choice": choice, "amount": amount, "balance": result},
+            room=TRIAL_ROOM,
+        )
+    else:
+        sio.emit("bet_rejected", {"reason": result}, to=sid)
 
 
 @sio.event
