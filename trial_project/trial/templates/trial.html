@@ -12,11 +12,15 @@
       <div class="title-row">
         <div class="brand">
           <i class="ti ti-gavel"></i>
-          <span>言い訳裁判</span>
-        </div>
-        <div class="live-badge">
-          <span class="live-dot"></span>
-          開廷中 <span id="viewer-count">{{ viewer_count }}</span>
+          <img
+            src="{% static 'trial/img/logo1.png' %}"
+            alt="言い訳裁判"
+            style="
+              height: 24px;
+              width: auto;
+              display: block;
+            "
+          >
         </div>
       </div>
       <div class="subtitle">{{ case_name }}</div>

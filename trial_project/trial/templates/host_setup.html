@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}言い訳裁判 - 開廷準備{% endblock %}
 {% block content %}
 <div class="phone-frame">
@@ -8,7 +9,15 @@
       <div class="title-row">
         <div class="brand">
           <i class="ti ti-gavel"></i>
-          <span>開廷準備</span>
+          <img
+            src="{% static 'trial/img/kaiteijunbi1.png' %}"
+            alt="開廷準備"
+            style="
+              height: 28px;
+              width: auto;
+              display: block;
+            "
+          >
         </div>
         <div style="display: flex; flex-direction: column; align-items: flex-end;">
           <span style="font-size: 9px; color: var(--text-cream-muted); letter-spacing: 1px;">主催コード</span>
