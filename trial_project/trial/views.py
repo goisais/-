@@ -127,8 +127,7 @@ def host_setup_start(request):
 
     start_trial(case_name, defendant)
     notify_trial_started()
-    start_phase_timer()
-    return redirect("trial")
+    return redirect("role_reveal")
 
 
 def join_waiting(request):
