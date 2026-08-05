@@ -1,30 +1,65 @@
 {% extends "base.html" %}
 {% block title %}言い訳裁判 - 役割発表{% endblock %}
+
 {% block content %}
 <div class="phone-frame">
   <div class="screen">
 
     <div class="screen-header" style="text-align: center; padding: 10px 14px;">
-      <div style="font-size: 10px; letter-spacing: 2px; color: var(--text-cream-muted);">開廷</div>
-      <!-- 同じブラウザの複数タブでテストすると、セッションが共有されて役割が混ざるので、
-           今どの名前でログイン中かここで確認できるようにしている -->
-      <div style="font-size: 11px; color: var(--gold); margin-top: 4px;">ログイン中: {{ my_name }}</div>
+      <div style="font-size: 10px; letter-spacing: 2px; color: var(--text-cream-muted);">
+        開廷
+      </div>
+
+      <div style="font-size: 11px; color: var(--gold); margin-top: 4px;">
+        ログイン中: {{ my_name }}
+      </div>
     </div>
 
     <div class="reveal-center">
       <div class="pre-label">あなたの役割は…</div>
-      <div class="role-circle" style="border: 3px solid {% if role.accent == 'danger' %}var(--danger){% else %}var(--accent-blue){% endif %};">
-        <i class="ti {{ role.icon }}" style="color: {% if role.accent == 'danger' %}var(--danger){% else %}var(--accent-blue){% endif %};"></i>
+
+      <div class="role-circle"
+           style="border:3px solid {% if role.accent == 'danger' %}var(--danger){% else %}var(--accent-blue){% endif %};">
+
+        <i class="ti {{ role.icon }}"
+           style="color:{% if role.accent == 'danger' %}var(--danger){% else %}var(--accent-blue){% endif %};">
+        </i>
+
       </div>
+
       <div class="role-name">{{ role.label }}</div>
       <div class="role-desc">{{ role.description }}</div>
-    </div>
 
-    <div class="section-pad" style="padding-top: 0;">
-      <!-- 入廷すると法廷配信画面（ホスト/参加者共通）へ -->
-      <a href="/trial" class="btn-primary" style="text-decoration: none;">入廷する</a>
+      <!-- カウントダウン -->
+      <div id="countdown"
+           style="margin-top:30px;font-size:22px;font-weight:bold;color:var(--gold);">
+        3
+      </div>
+
+      <div style="margin-top:10px;color:var(--text-cream-muted);">
+        裁判を開始します...
+      </div>
+
     </div>
 
   </div>
 </div>
+
+<script>
+let count = 3;
+
+const timer = setInterval(() => {
+
+    document.getElementById("countdown").textContent = count;
+
+    if (count <= 0) {
+        clearInterval(timer);
+        window.location.href = "/trial";
+    }
+
+    count--;
+
+}, 1000);
+</script>
+
 {% endblock %}
