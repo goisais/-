@@ -13,6 +13,11 @@
       <i class="ti ti-hourglass icon"></i>
       <div class="headline">ようこそ、{{ my_name }}さん</div>
       <div class="sub">ホストが準備を整えています…</div>
+      <!-- 同じブラウザで参加し続ける限り持ち越されるポイント。
+           メール登録などの手間なしで、匿名トークンだけで管理している -->
+      <div class="sub" style="color: var(--gold); margin-top: 4px;">
+        <i class="ti ti-coin"></i> 所持ポイント: {{ my_points }}p
+      </div>
     </div>
 
     <div class="field">

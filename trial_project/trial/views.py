@@ -27,6 +27,15 @@ from trial.state import (
     parse_mmss_to_seconds,
     start_trial,
     reset_for_new_round,
+    get_or_create_profile,
+    get_points,
+    start_trial_game_mode,
+    pick_random_case_template,
+    pick_random_defendant,
+    DIFFICULTY_LABELS,
+    GAME_MODE_PHASE_SECONDS,
+    GIFT_ASSETS,
+    GIFT_COST,
 )
 from trial.sockets import notify_participants_updated, notify_trial_started, start_phase_timer
 
@@ -42,6 +51,7 @@ def enter(request):
 
     username = (request.POST.get("username") or "").strip()
     role = request.POST.get("role")
+    player_token = (request.POST.get("player_token") or "").strip()
 
     if not username:
         return redirect("index")
@@ -57,16 +67,27 @@ def enter(request):
             },
         )
 
+    # メール登録などの手間をかけずに、ブラウザ紐付けの匿名トークンでポイントを
+    # 持ち越せるようにする。トークンが無い(古いブラウザ等)場合は毎回0ポイント扱い
+    get_or_create_profile(player_token, username)
+    request.session["player_token"] = player_token
+
     if role == "host":
+        # スプラトゥーンのレギュラー/ガチマッチみたいに、開廷する前に形式を選ぶ。
+        # 自由形式(classic)=今まで通り、ゲーム形式(game)=お題抽選+ベットの新モード
+        game_mode = (request.POST.get("mode") == "game")
+
         request.session["username"] = username
         request.session["is_host"] = True
         # ホストが「ホストとして開廷する」を押すたびに、新しい部屋(コード)として作り直す
         reset_for_new_round()
         lobby_state["host_name"] = username
+        lobby_state["mode"] = "game" if game_mode else "classic"
         # ホスト自身も参加者の1人（被告人になれるし、待機画面の一覧にも出る）
         if username not in lobby_state["participants"]:
             lobby_state["participants"].append(username)
-        return redirect("host_setup")
+        lobby_state["player_tokens"][username] = player_token
+        return redirect("host_setup_game" if game_mode else "host_setup")
 
     # 参加者として参加する場合は、招待コードの一致を確認する
     entered_code = (request.POST.get("access_code") or "").strip()
@@ -89,6 +110,7 @@ def enter(request):
         lobby_state["participants"].append(username)
         # 既にホスト側の開廷準備画面が開かれていれば、そちらへリアルタイムで反映
         notify_participants_updated()
+    lobby_state["player_tokens"][username] = player_token
     return redirect("join_waiting")
 
 
@@ -149,6 +171,37 @@ def host_setup_start(request):
     return redirect("role_reveal")
 
 
+def host_setup_game(request):
+    """ゲーム形式: ホストは被告人もお題も選ばない。参加者一覧を確認して
+    「抽選して開廷する」を押すだけ(被告人・お題ともにランダム抽選)"""
+    return render(
+        request,
+        "host_setup_game.html",
+        {
+            "participants": lobby_state["participants"],
+            "access_code": lobby_state["access_code"],
+        },
+    )
+
+
+def host_setup_game_start(request):
+    if request.method != "POST":
+        return redirect("host_setup_game")
+
+    defendant = pick_random_defendant()
+    if not defendant:
+        return redirect("host_setup_game")
+
+    case_template = pick_random_case_template()
+    start_trial_game_mode(defendant, case_template)
+    notify_trial_started()
+    start_phase_timer()
+    # ホストも参加者と同じ役割発表画面(15秒確認→カウントダウン→全員同時入廷)を
+    # 経由させる。以前はここで直接/trialへ飛ばしていたため、ホストだけ役割発表を
+    # 見られず、しかも他の参加者より先にひとりだけ法廷画面に入ってしまっていた
+    return redirect("role_reveal")
+
+
 def join_waiting(request):
     if "username" not in request.session:
         return redirect("index")
@@ -158,6 +211,7 @@ def join_waiting(request):
         {
             "my_name": request.session["username"],
             "participants": lobby_state["participants"],
+            "my_points": get_points(request.session.get("player_token")),
         },
     )
 
@@ -168,7 +222,13 @@ def role_reveal(request):
     if not username or not role_key:
         return redirect("index")
     role = {"key": role_key, **ROLE_META[role_key]}
-    return render(request, "role_reveal.html", {"role": role, "my_name": username})
+    game_mode = lobby_state.get("mode") == "game"
+    case_template = lobby_state.get("case_template") if game_mode else None
+    context = {"role": role, "my_name": username, "game_mode": game_mode}
+    if case_template:
+        context["case_template"] = case_template
+        context["difficulty_label"] = DIFFICULTY_LABELS.get(case_template.get("difficulty"), "")
+    return render(request, "role_reveal.html", context)
 
 
 def trial(request):
@@ -197,6 +257,27 @@ def trial(request):
     innocent = state["votes"]["innocent"]
     total_votes = guilty + innocent
 
+    game_mode = state.get("mode") == "game"
+    already_bet = my_name in state["bets"] if game_mode else False
+    is_lawyer = my_role in ("prosecutor", "defense")
+    objection_card_used = state.get("objection_card_used", {}).get(my_role, False) if is_lawyer else False
+    # 傍聴席・検察官・弁護人は投げ銭を送れる(被告人は自分に送れないので対象外)
+    can_send_gift = my_role in ("gallery", "prosecutor", "defense")
+    gift_spend = state.get("gift_spend", {}).get(my_role, 0) if is_lawyer else 0
+
+    gift_assets = GIFT_ASSETS if game_mode else []
+    gift_asset_paths = [f"trial/video/gifts/{a}" for a in gift_assets]
+    gift_thumb_paths = [
+        f"trial/img/gifts/{a.rsplit('.', 1)[0]}_thumb.jpg" for a in gift_assets
+    ]
+    gift_options = list(enumerate(gift_thumb_paths))  # [(0, "trial/img/gifts/gift_01_thumb.jpg"), ...]
+
+    case_template = state.get("case_template")
+    difficulty_label = (
+        DIFFICULTY_LABELS.get(case_template.get("difficulty"), "") if case_template else ""
+    )
+    role_meta = ROLE_META.get(my_role, {})
+
     return render(
         request,
         "trial.html",
@@ -220,6 +301,23 @@ def trial(request):
             "is_host": is_host,
             "trial_round": state["trial_round"],
             "judge_name": state["judge_name"],
+            "game_mode": game_mode,
+            "case_template": case_template,
+            "difficulty_label": difficulty_label,
+            "wallet_balance": state["wallets"].get(my_name),
+            "bet_counts": state["bet_counts"],
+            "already_bet": already_bet,
+            "is_lawyer": is_lawyer,
+            "objection_card_used": objection_card_used,
+            "gift_assets": gift_assets,
+            "gift_asset_paths": gift_asset_paths,
+            "gift_thumb_paths": gift_thumb_paths,
+            "gift_options": gift_options,
+            "gift_cost": GIFT_COST,
+            "gift_range": range(len(GIFT_ASSETS)) if game_mode else range(0),
+            "can_send_gift": can_send_gift,
+            "gift_spend": gift_spend,
+            "role_meta": role_meta,
         },
     )
 
@@ -230,6 +328,7 @@ def verdict(request):
     置くと自動で背景に使われる（無ければ顔写真だけ表示される）。"""
     state = lobby_state
     result = state["verdict_result"] or {"outcome": "innocent", "sentence": None, "tier": "normal"}
+    my_name = request.session.get("username", "")
     return render(
         request,
         "verdict.html",
@@ -240,5 +339,8 @@ def verdict(request):
             "sentence": result["sentence"],
             "tier": result.get("tier", "normal"),
             "face_capture": state["defendant_face_capture"],
+            "game_mode": state.get("mode") == "game",
+            "ranking": state.get("ranking"),
+            "my_name": my_name,
         },
     )

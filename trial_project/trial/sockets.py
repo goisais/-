@@ -23,6 +23,12 @@ from trial.state import (
     advance_to_next_round,
     select_judge,
     judge_decide_verdict,
+    place_bet as _place_bet,
+    determine_verdict_game_mode,
+    compute_game_mode_ranking,
+    use_objection_card as _use_objection_card,
+    send_gift as _send_gift,
+    GIFT_ASSETS,
 )
 
 LOBBY_ROOM = "lobby"
@@ -72,7 +78,7 @@ def join_trial(sid, data=None):
     # 新しく入ってきた人を、既にいる全員に伝える
     sio.emit("trial_peer_joined", {"sid": sid, "name": name, "role": role}, room=TRIAL_ROOM, skip_sid=sid)
 
-    # 現在のフェーズ・ゲージ・判決の状態を追いつかせる
+    # 現在のフェーズ・ゲージ・判決の状態を追いつかせる(ウォレット残高は本人の分だけ)
     sio.emit(
         "state_sync",
         {
@@ -81,6 +87,9 @@ def join_trial(sid, data=None):
             "gauges": lobby_state["gauges"],
             "voting_open": lobby_state["voting_open"],
             "votes": lobby_state["votes"],
+            "wallet_balance": lobby_state["wallets"].get(name),
+            "already_bet": name in lobby_state["bets"],
+            "bet_counts": lobby_state["bet_counts"],
         },
         to=sid,
     )
@@ -105,19 +114,103 @@ def objection(sid):
 
 @sio.event
 def cast_vote(sid, data):
+    """判決投票。被告人・検察官・弁護人は「自分が勝つ方」に入れられてしまうので
+    投票できない(=傍聴席だけが投票できる)。さらに、有罪/無罪に賭けた人は
+    その賭けが的中するように投票してしまえるので、賭けた人も投票できないようにする"""
     name = (data or {}).get("name") or "匿名"
     choice = (data or {}).get("choice")
     if choice not in ("guilty", "innocent"):
         return
     if not lobby_state["voting_open"]:
         return
-    if lobby_state["role_map"].get(name) == "defendant":
-        return  # 被告人は自分の裁判に投票できない
+    if lobby_state["role_map"].get(name) != "gallery":
+        return  # 傍聴席以外(被告人・検察官・弁護人)は自分の裁判に投票できない
+    if name in lobby_state["bets"]:
+        return  # 賭けた人は投票できない(投票結果を自分の得のために操作できてしまうため)
     if name in lobby_state["voters"]:
         return
     lobby_state["voters"].append(name)
     lobby_state["votes"][choice] += 1
     sio.emit("verdict_update", {"votes": lobby_state["votes"]}, room=TRIAL_ROOM)
+
+
+@sio.event
+def place_bet(sid, data):
+    """傍聴席が、有罪/無罪のどちらに賭けるか(掛け金つき)を決める。1裁判で何度でも、
+    両方に分けて賭けてもいい。投票開始前まで。ここで賭けた人はcast_vote側で
+    投票できなくなる(利益相反防止)。
+    金額・誰が賭けたかは他の人には見せず、本人にだけ結果を返す。全員には
+    「何件賭けられたか」という件数だけをリアルタイムで共有する(ブラフ要素)"""
+    name = (data or {}).get("name") or ""
+    choice = (data or {}).get("choice")
+    amount = (data or {}).get("amount")
+    if not name:
+        return
+    ok, result = _place_bet(name, choice, amount)
+    if ok:
+        # 本人にだけ、自分の新しい残高を伝える
+        sio.emit(
+            "bet_placed",
+            {"choice": choice, "amount": amount, "balance": result},
+            to=sid,
+        )
+        # 全員には、金額を伏せたまま「件数」だけ共有する
+        sio.emit("bet_counts_updated", {"counts": lobby_state["bet_counts"]}, room=TRIAL_ROOM)
+    else:
+        sio.emit("bet_rejected", {"reason": result}, to=sid)
+
+
+@sio.event
+def use_objection_card(sid, data):
+    """ゲーム形式専用: 検察官/弁護人が1裁判1回だけ使える異議ありカード。
+    相手の担当フェーズの残り時間から一気に20秒奪う(フェーズを跨いで後付けはしない、
+    その場で今のフェーズの残り時間そのものを削る)。全員の画面に演出付きで通知する"""
+    name = (data or {}).get("name") or ""
+    role = lobby_state["role_map"].get(name)
+    ok, result = _use_objection_card(name, role)
+    if ok:
+        steal = result
+        sio.emit(
+            "objection_card_used",
+            {
+                "name": name,
+                "role": role,
+                "steal_seconds": steal,
+                "phase_index": lobby_state["phase_index"],
+                "remaining": lobby_state["phase_remaining"],
+            },
+            room=TRIAL_ROOM,
+        )
+    else:
+        sio.emit("objection_card_rejected", {"reason": result}, to=sid)
+
+
+@sio.event
+def send_gift(sid, data):
+    """ゲーム形式専用: 傍聴席・検察官・弁護人が投げ銭(妨害ギフト)動画を送る(被告人は送れない)。
+    傍聴席は自分の裁判内ウォレットから引かれ、検察官/弁護人はウォレットが無い代わりに
+    送った分だけ最終スコアから引かれる(state.send_gift側で処理)。タイミング制限
+    (被告人陳述フェーズの最初の40秒は不可)もsend_gift()側でチェックする。
+    実際の動画再生・クロマキー処理・音量調整はすべてクライアント側(各ブラウザ)で行う"""
+    name = (data or {}).get("name") or ""
+    raw_index = (data or {}).get("gift_index")
+    try:
+        gift_index = int(raw_index)
+    except (TypeError, ValueError):
+        sio.emit("gift_rejected", {"reason": "invalid_gift"}, to=sid)
+        return
+
+    ok, result = _send_gift(name, gift_index)
+    if ok:
+        # 傍聴席なら{"role","balance"}、検察官/弁護人なら{"role","spend"}が返ってくる
+        sio.emit("gift_placed", result, to=sid)
+        sio.emit(
+            "gift_sent",
+            {"name": name, "gift_index": gift_index, "asset": GIFT_ASSETS[gift_index]},
+            room=TRIAL_ROOM,
+        )
+    else:
+        sio.emit("gift_rejected", {"reason": result}, to=sid)
 
 
 @sio.event
@@ -170,6 +263,25 @@ def finalize_verdict(sid, data=None):
     else:
         judge = select_judge()
         sio.emit("judge_selected", {"judge_name": judge, "votes": lobby_state["votes"]}, room=TRIAL_ROOM)
+
+
+@sio.event
+def finalize_verdict_game_mode(sid, data=None):
+    """ゲーム形式専用の判決確定。2審/3審には進まず、投票→賭けの傾向→運の順で
+    その場で必ず判決を出し、役職者・傍聴席を同じ物差しでランキングして
+    永続ポイントを配る。自由形式のfinalize_verdictとは完全に別処理"""
+    name = (data or {}).get("name") or ""
+    if not _is_host(name):
+        return
+    if not lobby_state["trial_started"]:
+        return
+    if lobby_state["verdict_result"] is not None:
+        return  # 二重確定防止
+
+    result = determine_verdict_game_mode()
+    ranking = compute_game_mode_ranking(result["outcome"])
+    sio.emit("verdict_finalized", result, room=TRIAL_ROOM)
+    sio.emit("ranking_computed", {"ranking": ranking}, room=TRIAL_ROOM)
 
 
 @sio.event

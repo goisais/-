@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}言い訳裁判 - 開廷準備(ゲーム形式){% endblock %}
+{% block content %}
+<div class="phone-frame">
+  <div class="screen ornate-theme">
+
+    <div class="ornate-setup-header">
+      <div class="ornate-setup-icon"><i class="ti ti-dice-6"></i></div>
+      <div class="ornate-setup-title">開廷準備(ゲーム形式)</div>
+      <div class="ornate-setup-code">
+        <span class="code-label">主催コード</span>
+        <span class="code-value">{{ access_code }}</span>
+      </div>
+      <div class="ornate-setup-sub">被告人・お題・持ち時間は全部ランダム抽選。参加者が揃ったら抽選するだけ</div>
+    </div>
+
+    <div class="field">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+        <label style="margin-bottom: 0;">参加者</label>
+        <span style="font-size: 11px; color: var(--text-brown-muted);" id="participant-count">{{ participants|length }}人</span>
+      </div>
+      <div class="chip-row" id="participant-list">
+        {% for p in participants %}
+        <span class="chip chip-muted">{{ p }}</span>
+        {% endfor %}
+      </div>
+      <div id="no-participants" class="helper-text" style="text-align: left; margin-top: 6px; {% if participants %}display:none;{% endif %}">
+        まだ誰も参加していません。参加者にログイン画面で名前を入れて「参加者として参加する」を押してもらってください。
+      </div>
+      <div style="display: flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 10px; color: var(--text-cream-muted);">
+        <i class="ti ti-dice-5" style="font-size: 13px;"></i>
+        被告人・検察官・弁護人は参加者からランダムで自動決定されます(最低3人推奨)
+      </div>
+    </div>
+
+    <div class="field" style="padding-top: 4px;">
+      <div style="background: rgba(250, 236, 231, 0.15); border-radius: 8px; padding: 10px 12px; font-size: 11px; color: var(--text-cream-muted); line-height: 1.6;">
+        <i class="ti ti-info-circle"></i>
+        全フェーズ1分固定・傍聴席は毎裁判10pのベット資金つき・お題はランダム抽選です
+      </div>
+    </div>
+
+    <form action="{% url 'host_setup_game_start' %}" method="post" id="setup-form">
+      {% csrf_token %}
+      <div class="section-pad">
+        <button type="submit" class="btn-primary" id="start-btn" {% if not participants %}disabled{% endif %}>
+          <i class="ti ti-dice-6" style="font-size: 17px;"></i>
+          抽選して開廷する
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<script>
+  const socket = io();
+  socket.emit("join_lobby");
+
+  function renderParticipants(list) {
+    const container = document.getElementById("participant-list");
+    const emptyNote = document.getElementById("no-participants");
+    const countEl = document.getElementById("participant-count");
+    const startBtn = document.getElementById("start-btn");
+    container.innerHTML = "";
+    list.forEach((name) => {
+      const chip = document.createElement("span");
+      chip.className = "chip chip-muted";
+      chip.textContent = name;
+      container.appendChild(chip);
+    });
+    emptyNote.style.display = list.length ? "none" : "block";
+    countEl.textContent = list.length + "人";
+    startBtn.disabled = list.length === 0;
+  }
+
+  socket.on("participants_updated", (data) => {
+    renderParticipants(data.participants || []);
+  });
+</script>
+{% endblock %}
