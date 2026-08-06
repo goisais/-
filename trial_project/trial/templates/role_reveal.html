@@ -51,19 +51,11 @@
       <div id="countdown-display" style="display: none; font-size: 64px; font-weight: 700; color: var(--gold); margin: 10px 0;"></div>
     </div>
     {% else %}
-    <div class="section-pad" style="padding-top: 0;">
-      <!-- 入廷すると法廷配信画面（ホスト/参加者共通）へ -->
-      <a href="/trial" class="btn-primary" style="text-decoration: none;">入廷する</a>
-      <!-- カウントダウン -->
-      <div id="countdown"
-           style="margin-top:30px;font-size:22px;font-weight:bold;color:var(--gold);">
-        3
-      </div>
-
-      <div style="margin-top:10px;color:var(--text-cream-muted);">
-        裁判を開始します...
-      </div>
-
+    <!-- 自由形式: 「入廷する」ボタンだと押すタイミングが人によってバラバラになるので、
+         3秒カウントダウンで全員自動的に法廷画面へ切り替える(ゲーム形式と同じ狙い) -->
+    <div class="section-pad" style="padding-top: 0; text-align: center;">
+      <div id="countdown" style="margin-top: 20px; font-size: 48px; font-weight: 700; color: var(--gold);">3</div>
+      <div style="margin-top: 10px; color: var(--text-cream-muted);">裁判を開始します…</div>
     </div>
     {% endif %}
 
@@ -126,23 +118,18 @@
     }, 1000);
   }
 </script>
-{% endif %}
-{% endblock %}
+{% else %}
 <script>
-let count = 3;
-
-const timer = setInterval(() => {
-
+  // 自由形式: シンプルな3秒カウントダウンで全員同時に法廷画面へ切り替える
+  let count = 3;
+  const timer = setInterval(() => {
     document.getElementById("countdown").textContent = count;
-
     if (count <= 0) {
-        clearInterval(timer);
-        window.location.href = "/trial";
+      clearInterval(timer);
+      window.location.href = "/trial";
     }
-
     count--;
-
-}, 1000);
+  }, 1000);
 </script>
-
+{% endif %}
 {% endblock %}
