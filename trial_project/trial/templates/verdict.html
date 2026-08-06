@@ -3,10 +3,10 @@
 {% block title %}言い訳裁判 - 判決{% endblock %}
 {% block content %}
 <div class="phone-frame">
-  <div class="screen">
+  <div class="screen ornate-theme">
 
-    <div class="screen-header" style="text-align: center; padding: 10px 14px;">
-      <div style="font-size: 10px; letter-spacing: 2px; color: var(--text-cream-muted);">判決</div>
+    <div class="ornate-page-header" style="padding-bottom: 4px;">
+      <span class="ornate-ribbon">判決</span>
     </div>
 
     <div class="verdict-reveal">
@@ -60,25 +60,25 @@
         <i class="ti ti-trophy"></i> 今回のランキングを見る
       </button>
     </div>
-    <div id="ranking-panel" style="display: none; margin: 0 16px 12px; background: rgba(250, 236, 231, 0.5); border-radius: 10px; padding: 10px 14px;">
+    <div id="ranking-panel" class="ornate-note-box" style="display: none; margin: 0 16px 12px; text-align: left;">
       {% for entry in ranking %}
-      <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; {% if not forloop.last %}border-bottom: 1px solid rgba(90, 62, 40, 0.15);{% endif %}">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; {% if not forloop.last %}border-bottom: 1px solid rgba(255, 215, 106, 0.15);{% endif %}">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 13px; font-weight: 700; color: var(--wood-dark); min-width: 22px;">{{ entry.rank }}位</span>
+          <span style="font-size: 13px; font-weight: 700; color: var(--ornate-gold-bright); min-width: 22px;">{{ entry.rank }}位</span>
           <div>
-            <div style="font-size: 13px; font-weight: 500; color: var(--text-dark);">{{ entry.name }}{% if entry.name == my_name %}（自分）{% endif %}</div>
-            <div style="font-size: 10px; color: var(--text-brown-muted);">
+            <div style="font-size: 13px; font-weight: 500; color: var(--ornate-text);">{{ entry.name }}{% if entry.name == my_name %}（自分）{% endif %}</div>
+            <div style="font-size: 10px; color: var(--ornate-text-muted);">
               {% if entry.role == "defendant" %}被告人{% elif entry.role == "prosecutor" %}検察官{% elif entry.role == "defense" %}弁護人{% else %}傍聴席{% endif %}
               ・スコア{{ entry.score }}
             </div>
           </div>
         </div>
-        <div style="font-size: 12px; font-weight: 600; color: {% if entry.bonus_points > 0 %}var(--gold){% else %}var(--text-brown-muted){% endif %};">
+        <div style="font-size: 12px; font-weight: 600; color: {% if entry.bonus_points > 0 %}var(--ornate-gold-bright){% else %}var(--ornate-text-muted){% endif %};">
           +{{ entry.bonus_points }}p
         </div>
       </div>
       {% empty %}
-      <div style="font-size: 12px; color: var(--text-brown-muted); text-align: center;">ランキング情報がありません</div>
+      <div style="font-size: 12px; color: var(--ornate-text-muted); text-align: center;">ランキング情報がありません</div>
       {% endfor %}
     </div>
     {% endif %}

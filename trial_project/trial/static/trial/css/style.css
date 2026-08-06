@@ -40,23 +40,23 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 10px;
+  padding: 6px;
   height: 100vh;
   height: 100dvh; /* モバイルSafariのアドレスバー分を差し引いた実際の表示高さ */
   overflow: hidden; /* ページ自体はスクロールさせず、中身はscreen側で内部スクロールする */
 }
 
 .phone-frame {
-  background: linear-gradient(135deg, #eaf8ff 0%, #a9deff 14%, #4fb3e8 28%, #1f7fc4 40%, #cdeeff 52%, #3a94d1 66%, #eaf8ff 80%, #2670a3 100%);
+  background: linear-gradient(135deg, #3a2308 0%, #d4a017 12%, #8a5a12 26%, #ffe9a8 40%, #6e4318 55%, #d4a017 70%, #3a2308 85%, #8a5a12 100%);
   border-radius: var(--radius-lg);
-  padding: 12px;
+  padding: 10px;
   max-width: 400px;
   width: 100%;
   height: 100%;
-  max-height: 720px;
+  max-height: 900px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 12px 28px rgba(10, 40, 65, 0.45), 0 0 0 3px rgba(255, 255, 255, 0.65) inset;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), 0 0 0 3px rgba(255, 215, 106, 0.45) inset;
 }
 
 .screen {
@@ -237,7 +237,7 @@ body {
 .screen-header {
   background: var(--wood-dark);
   border-bottom: 3px solid var(--gold);
-  padding: 12px 14px;
+  padding: 8px 14px;
 }
 
 .screen-header .title-row {
@@ -411,7 +411,7 @@ body {
 
 /* フェーズタイマー */
 .phase-row {
-  margin: 12px 12px 0;
+  margin: 6px 12px 0;
   display: flex;
   gap: 6px;
 }
@@ -419,7 +419,7 @@ body {
 .phase-card {
   flex: 1;
   border-radius: 8px;
-  padding: 6px 8px;
+  padding: 4px 6px;
   background: rgba(250, 236, 231, 0.35);
 }
 
@@ -484,8 +484,8 @@ body {
 /* 証拠映像フレーム */
 .evidence-frame {
   position: relative;
-  margin: 12px;
-  padding: 6px;
+  margin: 6px 12px;
+  padding: 5px;
   background: var(--gold);
   border-radius: 10px;
 }
@@ -494,7 +494,9 @@ body {
   position: relative;
   border-radius: 6px;
   overflow: hidden;
-  aspect-ratio: 4 / 3;
+  height: 26vh;
+  max-height: 160px;
+  min-height: 100px;
   background: var(--wood-dark);
   border: 1px solid #2c1508;
 }
@@ -689,7 +691,7 @@ body {
 .gacha-row {
   display: flex;
   gap: 8px;
-  margin: 0 12px 12px;
+  margin: 0 12px 6px;
 }
 
 .gacha-badge {
@@ -697,7 +699,7 @@ body {
   background: var(--cream);
   border: 1px solid var(--wood-dark);
   border-radius: 6px;
-  padding: 8px 10px;
+  padding: 5px 10px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -717,7 +719,7 @@ body {
 
 /* 異議ありボタン */
 .objection-btn {
-  margin: 0 12px 12px;
+  margin: 0 12px 6px;
 }
 
 .objection-btn button {
@@ -726,8 +728,8 @@ body {
   color: var(--on-danger);
   border: 2px solid var(--gold);
   border-radius: 6px;
-  padding: 10px;
-  font-size: 14px;
+  padding: 7px;
+  font-size: 13px;
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -745,7 +747,7 @@ body {
 
 /* コメント欄 */
 .comment-box {
-  margin: 0 12px 12px;
+  margin: 0 12px 6px;
   background: var(--cream);
   border-left: 3px solid var(--gold);
   border-radius: 0 6px 6px 0;
@@ -753,8 +755,8 @@ body {
 }
 
 .comment-feed {
-  padding: 8px 10px 6px;
-  max-height: 120px;
+  padding: 4px 10px 3px;
+  max-height: 46px;
   overflow-y: auto;
 }
 
@@ -810,11 +812,11 @@ body {
 
 /* 判決 */
 .verdict-box {
-  margin: 0 12px 14px;
+  margin: 0 12px 5px;
   background: var(--cream);
   border: 1px solid var(--wood-dark);
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 5px 12px;
 }
 
 .verdict-box .verdict-title {
@@ -822,7 +824,7 @@ body {
   font-size: 10px;
   color: var(--text-brown-muted);
   letter-spacing: 2px;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 
 .verdict-box .verdict-labels {
@@ -1045,22 +1047,22 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 10px 12px 0;
-  padding: 8px 12px;
+  margin: 6px 12px 0;
+  padding: 5px 12px;
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.25);
   border: 2px solid var(--gold);
 }
 
 .my-role-banner .icon-circle {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 15px;
+  font-size: 12px;
   color: #fff;
 }
 
@@ -1068,20 +1070,20 @@ body {
 .my-role-banner .icon-circle.accent-accent { background: var(--accent-blue); }
 
 .my-role-banner .label {
-  font-size: 9px;
+  font-size: 8px;
   letter-spacing: 1px;
   color: var(--text-cream-muted);
 }
 
 .my-role-banner .value {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--cream);
 }
 
 /* ---- ゲーム形式: お題詳細ボックス(罪状・言い分) ---- */
 .case-info-box {
-  margin: 12px;
+  margin: 6px 12px;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid rgba(239, 159, 39, 0.4);
@@ -1093,7 +1095,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 5px 12px;
   background: linear-gradient(90deg, var(--wood-dark), #6a2a11);
   border-bottom: 1px solid rgba(239, 159, 39, 0.4);
 }
@@ -1115,9 +1117,9 @@ body {
 }
 
 .case-info-body {
-  padding: 10px 12px;
-  font-size: 12px;
-  line-height: 1.7;
+  padding: 6px 12px;
+  font-size: 11px;
+  line-height: 1.5;
   color: var(--text-cream-muted);
 }
 
@@ -1159,10 +1161,10 @@ body {
 .gift-pick-btn {
   background: var(--cream);
   border: 2px solid var(--wood-dark);
-  border-radius: 10px;
-  padding: 3px;
-  width: 54px;
-  height: 54px;
+  border-radius: 6px;
+  padding: 2px;
+  width: 32px;
+  height: 32px;
   overflow: hidden;
   position: relative;
 }
@@ -1251,16 +1253,50 @@ body {
 }
 
 .ornate-theme {
-  background:
+  background-color: var(--ornate-bg-2);
+  background-image:
+    url('../img/ornate/corner_tl.png'),
+    url('../img/ornate/corner_tr.png'),
+    url('../img/ornate/corner_bl.png'),
+    url('../img/ornate/corner_br.png'),
+    url('../img/ornate/edge_left.png'),
+    url('../img/ornate/edge_right.png'),
     radial-gradient(ellipse 140% 55% at 50% -10%, rgba(255, 215, 106, 0.16) 0%, transparent 60%),
     linear-gradient(180deg, var(--ornate-bg-1) 0%, var(--ornate-bg-2) 55%, var(--ornate-bg-3) 100%);
+  background-position:
+    top left,
+    top right,
+    bottom left,
+    bottom right,
+    left center,
+    right center,
+    center,
+    center;
+  background-repeat:
+    no-repeat,
+    no-repeat,
+    no-repeat,
+    no-repeat,
+    repeat-y,
+    repeat-y,
+    no-repeat,
+    no-repeat;
+  background-size:
+    72px 72px,
+    72px 72px,
+    72px 72px,
+    72px 72px,
+    26px auto,
+    26px auto,
+    auto,
+    auto;
 }
 
 .ornate-theme::before {
   content: "";
   position: absolute;
   inset: 5px;
-  border: 1px solid rgba(255, 215, 106, 0.28);
+  border: 1px solid rgba(255, 215, 106, 0.22);
   border-radius: 10px;
   pointer-events: none;
   z-index: 0;
@@ -1317,8 +1353,8 @@ body {
 
 .ornate-logo-block img {
   position: relative;
-  width: 172px;
-  max-width: 70%;
+  width: 250px;
+  max-width: 85%;
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.6));
 }
 
@@ -1522,9 +1558,11 @@ body {
 
 /* 開廷方法カード（ログイン画面） */
 .ornate-card {
+  box-sizing: border-box;
   border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 10px;
+  border: 2px solid var(--ornate-gold);
+  padding: 16px 14px;
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1534,19 +1572,21 @@ body {
 .ornate-card.mode-game {
   flex-direction: column;
   text-align: center;
-  gap: 6px;
+  gap: 8px;
+  min-height: 108px;
+  justify-content: center;
 }
 
 .ornate-card.mode-classic {
   background: linear-gradient(160deg, #4a1015, #2c0a0d);
-  border: 1.5px solid var(--ornate-gold);
+  border-color: var(--ornate-gold-bright);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), 0 0 8px rgba(255, 215, 106, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   animation: neon-pulse 2.2s ease-in-out infinite;
 }
 
 .ornate-card.mode-game {
   background: linear-gradient(160deg, #3a2308, #241505);
-  border: 1.5px solid var(--ornate-gold-bright);
+  border-color: var(--ornate-gold-bright);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), 0 0 8px rgba(255, 215, 106, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   animation: neon-pulse 2.2s ease-in-out infinite;
   animation-delay: 0.6s;
@@ -1559,9 +1599,11 @@ body {
 
 .ornate-card.mode-guest {
   background: rgba(255, 255, 255, 0.04);
-  border: 1.5px solid rgba(255, 215, 106, 0.3);
+  border-color: var(--ornate-gold-deep);
   flex-direction: column;
   align-items: stretch;
+  min-height: 108px;
+  justify-content: center;
 }
 
 .ornate-card .icon-circle {
@@ -1643,4 +1685,163 @@ body {
   padding: 8px 12px;
   font-size: 12px;
   color: #ffb3b3;
+}
+
+/* 待機画面・役割発表画面などで使う共通の見出し(赤リボン+大きいタイトル) */
+.ornate-page-header {
+  position: relative;
+  text-align: center;
+  padding: 22px 16px 10px;
+}
+
+.ornate-ribbon {
+  display: inline-block;
+  padding: 5px 22px;
+  background: linear-gradient(160deg, var(--ornate-red-light), var(--ornate-red));
+  border: 1px solid var(--ornate-gold-bright);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--ornate-gold-bright);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.ornate-page-title {
+  margin-top: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--ornate-gold-bright);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.ornate-note-box {
+  padding: 10px 14px;
+  border: 1px solid var(--ornate-gold-deep);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ornate-text-muted);
+}
+
+.ornate-theme .waiting-center .icon {
+  color: var(--ornate-gold-bright);
+  text-shadow: 0 0 16px rgba(255, 215, 106, 0.55);
+}
+
+.ornate-theme .waiting-center .headline {
+  color: var(--ornate-text);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.ornate-theme .waiting-center .sub {
+  color: var(--ornate-text-muted);
+}
+
+.ornate-theme .chip.chip-me {
+  background: linear-gradient(160deg, var(--ornate-red-light), var(--ornate-red));
+  border: 2px solid var(--ornate-gold-bright);
+  color: var(--ornate-text);
+  font-weight: 700;
+  padding: 6px 16px 6px 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* 役割発表画面 */
+.ornate-theme .reveal-center .pre-label {
+  color: var(--ornate-text-muted);
+}
+
+.ornate-theme .reveal-center .role-circle {
+  width: 92px;
+  height: 92px;
+  background: radial-gradient(circle at 40% 30%, #8a1420, #4a0d14);
+  border: 4px solid var(--ornate-gold-bright);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 215, 106, 0.35), inset 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.ornate-theme .reveal-center .role-circle i {
+  font-size: 34px;
+  color: var(--ornate-gold-bright);
+  text-shadow: 0 0 12px rgba(255, 215, 106, 0.7);
+}
+
+.ornate-theme .reveal-center .role-name {
+  color: var(--ornate-gold-bright);
+  font-size: 24px;
+  font-weight: 700;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.ornate-theme .reveal-center .role-desc {
+  color: var(--ornate-text-muted);
+}
+
+.ornate-countdown-number {
+  margin: 10px 0;
+  font-size: 56px;
+  font-weight: 900;
+  color: var(--ornate-gold-bright);
+  text-shadow: 0 0 20px rgba(255, 215, 106, 0.8), 0 4px 10px rgba(0, 0, 0, 0.6);
+}
+
+/* 判決結果画面 */
+.ornate-theme .verdict-reveal .pre-label {
+  color: var(--ornate-text-muted);
+}
+
+.ornate-theme .verdict-reveal .outcome-text {
+  font-size: 42px;
+  letter-spacing: 6px;
+}
+
+.ornate-theme .verdict-reveal .outcome-text.guilty {
+  background: linear-gradient(180deg, #ffe08a, #ff4d2e);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 18px rgba(255, 77, 46, 0.6));
+}
+
+.ornate-theme .verdict-reveal .outcome-text.innocent {
+  background: linear-gradient(180deg, #c8ffc0, #35d96b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 18px rgba(53, 217, 107, 0.6));
+}
+
+.ornate-theme .verdict-reveal .case-name {
+  color: var(--ornate-text-muted);
+}
+
+.ornate-theme .wanted-flair {
+  color: #ff8a8a;
+  border-color: #ff8a8a;
+}
+
+.ornate-theme .sentence-tag {
+  background: linear-gradient(160deg, var(--ornate-red-light), var(--ornate-red));
+  border: 2px solid var(--ornate-gold-bright);
+  color: var(--ornate-text);
+}
+
+.ornate-theme .sentence-tag.wanted-tier {
+  background: linear-gradient(160deg, #6e1018, #3a0a0e);
+  border-color: var(--ornate-gold-bright);
+  color: var(--ornate-gold-bright);
+}
+
+.ornate-theme .collage-frame {
+  border: 3px solid var(--ornate-gold-bright);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.ornate-theme .collage-empty {
+  color: var(--ornate-text-muted);
 }

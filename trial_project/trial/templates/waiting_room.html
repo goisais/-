@@ -2,11 +2,11 @@
 {% block title %}言い訳裁判 - 待機中{% endblock %}
 {% block content %}
 <div class="phone-frame">
-  <div class="screen">
+  <div class="screen ornate-theme">
 
-    <div class="screen-header" style="text-align: center;">
-      <div style="font-size: 10px; letter-spacing: 2px; color: var(--text-cream-muted);">WAITING ROOM</div>
-      <div style="font-size: 16px; font-weight: 500; color: var(--cream); margin-top: 2px;">開廷をお待ちください</div>
+    <div class="ornate-page-header">
+      <span class="ornate-ribbon">WAITING ROOM</span>
+      <div class="ornate-page-title">開廷をお待ちください</div>
     </div>
 
     <div class="waiting-center">
@@ -15,25 +15,25 @@
       <div class="sub">ホストが準備を整えています…</div>
       <!-- 同じブラウザで参加し続ける限り持ち越されるポイント。
            メール登録などの手間なしで、匿名トークンだけで管理している -->
-      <div class="sub" style="color: var(--gold); margin-top: 4px;">
+      <div class="sub" style="color: var(--ornate-gold-bright); margin-top: 4px;">
         <i class="ti ti-coin"></i> 所持ポイント: {{ my_points }}p
       </div>
     </div>
 
     <div class="field">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-        <span style="font-size: 10px; letter-spacing: 1px; color: var(--wood-light);">入室中の参加者</span>
-        <span style="font-size: 11px; color: var(--text-cream-muted);" id="participant-count">{{ participants|length }}人</span>
+        <span style="font-size: 10px; letter-spacing: 1px; color: var(--ornate-gold);">入室中の参加者</span>
+        <span style="font-size: 11px; color: var(--ornate-text-muted);" id="participant-count">{{ participants|length }}人</span>
       </div>
       <div class="chip-row" id="participant-list">
         {% for p in participants %}
-        <span class="chip {% if p == my_name %}chip-muted{% endif %}">{% if p == my_name %}あなた（{{ p }}）{% else %}{{ p }}{% endif %}</span>
+        <span class="chip {% if p == my_name %}chip-me{% else %}chip-muted{% endif %}">{% if p == my_name %}あなた（{{ p }}）{% else %}{{ p }}{% endif %}</span>
         {% endfor %}
       </div>
     </div>
 
     <div class="section-pad">
-      <div class="helper-text">ホストが「開廷する」を押すと自動で始まります</div>
+      <div class="ornate-note-box">ホストが「開廷する」を押すと自動で始まります</div>
     </div>
 
   </div>
@@ -51,7 +51,7 @@
     container.innerHTML = "";
     list.forEach((name) => {
       const chip = document.createElement("span");
-      chip.className = "chip" + (name === myName ? " chip-muted" : "");
+      chip.className = "chip " + (name === myName ? "chip-me" : "chip-muted");
       chip.textContent = name === myName ? `あなた（${name}）` : name;
       container.appendChild(chip);
     });
