@@ -24,6 +24,8 @@ from trial.state import (
     select_judge,
     judge_decide_verdict,
     place_bet as _place_bet,
+    determine_verdict_game_mode,
+    compute_game_mode_ranking,
 )
 
 LOBBY_ROOM = "lobby"
@@ -84,6 +86,7 @@ def join_trial(sid, data=None):
             "votes": lobby_state["votes"],
             "wallet_balance": lobby_state["wallets"].get(name),
             "already_bet": name in lobby_state["bets"],
+            "bet_counts": lobby_state["bet_counts"],
         },
         to=sid,
     )
@@ -130,8 +133,11 @@ def cast_vote(sid, data):
 
 @sio.event
 def place_bet(sid, data):
-    """傍聴席が、有罪/無罪のどちらに賭けるか(掛け金つき)を決める。投票開始前まで。
-    ここで賭けた人はcast_vote側で投票できなくなる(利益相反防止)"""
+    """傍聴席が、有罪/無罪のどちらに賭けるか(掛け金つき)を決める。1裁判で何度でも、
+    両方に分けて賭けてもいい。投票開始前まで。ここで賭けた人はcast_vote側で
+    投票できなくなる(利益相反防止)。
+    金額・誰が賭けたかは他の人には見せず、本人にだけ結果を返す。全員には
+    「何件賭けられたか」という件数だけをリアルタイムで共有する(ブラフ要素)"""
     name = (data or {}).get("name") or ""
     choice = (data or {}).get("choice")
     amount = (data or {}).get("amount")
@@ -139,11 +145,14 @@ def place_bet(sid, data):
         return
     ok, result = _place_bet(name, choice, amount)
     if ok:
+        # 本人にだけ、自分の新しい残高を伝える
         sio.emit(
             "bet_placed",
-            {"name": name, "choice": choice, "amount": amount, "balance": result},
-            room=TRIAL_ROOM,
+            {"choice": choice, "amount": amount, "balance": result},
+            to=sid,
         )
+        # 全員には、金額を伏せたまま「件数」だけ共有する
+        sio.emit("bet_counts_updated", {"counts": lobby_state["bet_counts"]}, room=TRIAL_ROOM)
     else:
         sio.emit("bet_rejected", {"reason": result}, to=sid)
 
@@ -198,6 +207,25 @@ def finalize_verdict(sid, data=None):
     else:
         judge = select_judge()
         sio.emit("judge_selected", {"judge_name": judge, "votes": lobby_state["votes"]}, room=TRIAL_ROOM)
+
+
+@sio.event
+def finalize_verdict_game_mode(sid, data=None):
+    """ゲーム形式専用の判決確定。2審/3審には進まず、投票→賭けの傾向→運の順で
+    その場で必ず判決を出し、役職者・傍聴席を同じ物差しでランキングして
+    永続ポイントを配る。自由形式のfinalize_verdictとは完全に別処理"""
+    name = (data or {}).get("name") or ""
+    if not _is_host(name):
+        return
+    if not lobby_state["trial_started"]:
+        return
+    if lobby_state["verdict_result"] is not None:
+        return  # 二重確定防止
+
+    result = determine_verdict_game_mode()
+    ranking = compute_game_mode_ranking(result["outcome"])
+    sio.emit("verdict_finalized", result, room=TRIAL_ROOM)
+    sio.emit("ranking_computed", {"ranking": ranking}, room=TRIAL_ROOM)
 
 
 @sio.event

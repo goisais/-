@@ -140,7 +140,8 @@ def make_initial_state():
         "trial_round": 1,  # 1審/2審/3審
         "judge_name": None,  # 3審でも同数だったとき、強制的に判決を下す裁判長役の名前
         "wallets": {},  # 傍聴席の名前 -> 裁判内ポイント残高(毎裁判10pからスタート)
-        "bets": {},  # 傍聴席の名前 -> {"choice": "guilty"/"innocent", "amount": int}
+        "bets": {},  # 傍聴席の名前 -> [{"choice": "guilty"/"innocent", "amount": int}, ...] (複数回OK)
+        "bet_counts": {"guilty": 0, "innocent": 0},  # 賭けられた「件数」(金額は見せない、ブラフ用)
     }
 
 
@@ -237,6 +238,7 @@ def start_trial(case_name, defendant):
             "judge_name": None,
             "wallets": _init_gallery_wallets(role_map),
             "bets": {},
+            "bet_counts": {"guilty": 0, "innocent": 0},
         }
     )
 
@@ -254,9 +256,11 @@ def random_walk(current, spread=8):
 
 
 def place_bet(name, choice, amount):
-    """傍聴席が、有罪/無罪のどちらに賭けるかを決める。的中で2倍、外れで没収。
+    """傍聴席が、有罪/無罪どちらかに賭ける。1裁判で何度でも・両方に分けて賭けられる
+    (被告人に3p、検察に5p、みたいな両建てもOK)。金額は隠すが、賭けた「件数」は
+    bet_countsでリアルタイムに増える(ブラフ用)。
     判決を決める投票と同じ人が同じ裁判で両方やると「自分が得する方に投票する」が
-    できてしまうので、賭けた人は投票できないようにする(cast_vote側でチェックする)。
+    できてしまうので、1回でも賭けた人は投票できないようにする(cast_vote側でチェック)。
     戻り値: (成功したか, エラーメッセージ or 更新後の残高)"""
     if choice not in ("guilty", "innocent"):
         return False, "invalid_choice"
@@ -264,10 +268,8 @@ def place_bet(name, choice, amount):
         return False, "not_gallery"  # 役職がある人は裁判内ウォレットを持たない
     if lobby_state["voting_open"]:
         return False, "betting_closed"  # 投票が始まったら賭けは締め切り
-    if name in lobby_state["bets"]:
-        return False, "already_bet"  # 1裁判につき1回だけ
     if name in lobby_state["voters"]:
-        return False, "already_voted"  # 投票した人はもう賭けられない(念のため)
+        return False, "already_voted"  # 投票した人はもう賭けられない
     try:
         amount = int(amount)
     except (TypeError, ValueError):
@@ -277,21 +279,23 @@ def place_bet(name, choice, amount):
         return False, "insufficient_balance"
 
     lobby_state["wallets"][name] = balance - amount
-    lobby_state["bets"][name] = {"choice": choice, "amount": amount}
+    lobby_state["bets"].setdefault(name, []).append({"choice": choice, "amount": amount})
+    lobby_state["bet_counts"][choice] = lobby_state["bet_counts"].get(choice, 0) + 1
     return True, lobby_state["wallets"][name]
 
 
 def _resolve_bets(outcome):
-    """判決確定時に、傍聴席の賭けを清算する。的中者にはamountの2倍を払い戻す
-    (賭けた時点で残高からamountを引いてあるので、勝てば実質+amount、
-    負ければ賭けた分がそのまま没収される)"""
-    for name, bet in lobby_state["bets"].items():
-        if bet["choice"] == outcome:
-            lobby_state["wallets"][name] = lobby_state["wallets"].get(name, 0) + bet["amount"] * 2
+    """(自由形式で使う、素朴な清算方式)的中者にはamountの2倍を払い戻す。
+    1人1回しか賭けない前提の古い形式で使う。ゲーム形式は_resolve_bets_pari_mutuelを使う"""
+    for name, bets in lobby_state["bets"].items():
+        for bet in bets:
+            if bet["choice"] == outcome:
+                lobby_state["wallets"][name] = lobby_state["wallets"].get(name, 0) + bet["amount"] * 2
 
 
-def _build_verdict_result(outcome):
-    """outcome("guilty"/"innocent")を確定させて、有罪なら刑罰(・指名手配演出かどうか)も決める"""
+def _random_sentence_and_tier(outcome):
+    """outcome("guilty"/"innocent")から、刑罰(・指名手配演出かどうか)をランダムに決める。
+    自由形式・ゲーム形式どちらの判決確定処理からも共通で使う"""
     tier = "normal"
     sentence = None
     if outcome == "guilty":
@@ -300,6 +304,13 @@ def _build_verdict_result(outcome):
             sentence = random.choice(WANTED_TITLES)
         else:
             sentence = random_guilty_sentence()
+    return sentence, tier
+
+
+def _build_verdict_result(outcome):
+    """(自由形式で使う)outcomeを確定させて、有罪なら刑罰も決める。賭けの清算は
+    素朴な2倍方式(_resolve_bets)。ゲーム形式は_build_verdict_result_game_modeを使う"""
+    sentence, tier = _random_sentence_and_tier(outcome)
 
     _resolve_bets(outcome)
 
@@ -358,6 +369,7 @@ def advance_to_next_round():
             "verdict_result": None,
             "wallets": _init_gallery_wallets(role_map),
             "bets": {},
+            "bet_counts": {"guilty": 0, "innocent": 0},
         }
     )
     return {
@@ -375,3 +387,138 @@ def select_judge():
     judge = random.choice(candidates) if candidates else None
     lobby_state["judge_name"] = judge
     return judge
+
+
+# =====================================================================
+# ゲーム形式(ユーモア王選手権むけの新モード)専用のロジック。
+# 自由形式(今までの、ホストが被告人・時間を決める形式)のコードは一切変更していない。
+# ゲーム形式は2審・3審に進まない。同数決着になっても、投票→賭けの傾向→運の順に
+# フォールバックして必ずその場で判決を出す。
+# =====================================================================
+
+def _bet_pool_totals():
+    """有罪/無罪それぞれに、全員の賭け金がいくら集まっているかを合計する
+    (オッズ計算・タイの時のフォールバック判定に使う。表には金額そのものは出さない)"""
+    totals = {"guilty": 0, "innocent": 0}
+    for bets in lobby_state["bets"].values():
+        for bet in bets:
+            totals[bet["choice"]] += bet["amount"]
+    return totals
+
+
+def determine_verdict_game_mode():
+    """ゲーム形式の判決決定。優先順位は
+    1. 投票が割れていれば、多数決で決定(今まで通り、傍聴席の中でも賭けていない人だけの投票)
+    2. 投票が同数(全員が賭けに回って0-0になるケースを含む)なら、賭け総額が多い方で決定
+       (「みんなの財布が向いてる方」。これも運ではなく集合知)
+    3. それすら完全に同額(あるいは無投票・無賭け)なら、最後だけ運で決める
+    賭けの清算はパリミュチュエル方式(_resolve_bets_pari_mutuel)で行う"""
+    votes = lobby_state["votes"]
+    if votes["guilty"] != votes["innocent"]:
+        outcome = "guilty" if votes["guilty"] > votes["innocent"] else "innocent"
+        decided_by = "vote"
+    else:
+        pools = _bet_pool_totals()
+        if pools["guilty"] != pools["innocent"]:
+            outcome = "guilty" if pools["guilty"] > pools["innocent"] else "innocent"
+            decided_by = "bet_pool"
+        else:
+            outcome = random.choice(["guilty", "innocent"])
+            decided_by = "coin_flip"
+
+    result = _build_verdict_result_game_mode(outcome)
+    result["decided_by"] = decided_by
+    return result
+
+
+def _resolve_bets_pari_mutuel(outcome):
+    """判決確定時に、傍聴席の賭けをパリミュチュエル(オッズ)方式で清算する。
+    負けた側の賭け金の合計を、勝った側の人たちで自分の賭け金の比率に応じて山分けする。
+    不人気な方(集まった金額が少ない方)に賭けて当てるほど高配当になる。
+    賭けた時点で残高からamountを引いてあるので、ここでは勝ち分だけを払い戻す"""
+    pools = _bet_pool_totals()
+    winning_pool = pools[outcome]
+    losing_pool = pools["innocent" if outcome == "guilty" else "guilty"]
+
+    if winning_pool <= 0:
+        return  # 勝った側に誰も賭けていなければ、山分けする相手がいない
+
+    for name, bets in lobby_state["bets"].items():
+        stake = sum(b["amount"] for b in bets if b["choice"] == outcome)
+        if stake <= 0:
+            continue
+        payout = stake + (stake / winning_pool) * losing_pool
+        lobby_state["wallets"][name] = lobby_state["wallets"].get(name, 0) + round(payout)
+
+
+def _build_verdict_result_game_mode(outcome):
+    """ゲーム形式の判決確定処理。_build_verdict_result(自由形式用)とほぼ同じだが、
+    賭けの清算がパリミュチュエル方式になる点だけが違う"""
+    sentence, tier = _random_sentence_and_tier(outcome)
+
+    _resolve_bets_pari_mutuel(outcome)
+
+    result = {"outcome": outcome, "sentence": sentence, "tier": tier}
+    lobby_state["verdict_result"] = result
+    lobby_state["voting_open"] = False
+    return result
+
+
+# 役職者(被告人・検察官・弁護人)の裁判内スコア。勝った側は20p、負けた側は5p
+# (参加賞)。検察官/弁護人が「異議ありカード」を使って勝った場合は18pに割引く
+# (カードという強い武器を使った分のハンデ)。カード未実装の間はcard_used=Falseのまま
+COURT_ROLE_WIN_SCORE = 20
+COURT_ROLE_WIN_SCORE_WITH_CARD = 18
+COURT_ROLE_LOSE_SCORE = 5
+
+# 各役職が「勝ち」とみなされるのはどちらの判決が出た時か
+_FAVORABLE_OUTCOME = {
+    "defendant": "innocent",
+    "defense": "innocent",
+    "prosecutor": "guilty",
+}
+
+# 傍聴席全員(役職者以外)の最終順位に応じて付与する永続ポイント。
+# 同じスコアの人は同じ順位・同じ永続ポイントになる(例:1位が2人ならどちらも10p)
+RANKING_REWARDS = [10, 6, 3]  # 1位, 2位, 3位。4位以降は0p
+
+
+def _court_role_score(role, outcome):
+    card_used = lobby_state.get("objection_card_used", {}).get(role, False)
+    won = _FAVORABLE_OUTCOME.get(role) == outcome
+    if not won:
+        return COURT_ROLE_LOSE_SCORE
+    return COURT_ROLE_WIN_SCORE_WITH_CARD if card_used else COURT_ROLE_WIN_SCORE
+
+
+def compute_game_mode_ranking(outcome):
+    """判決確定後に、被告人・検察官・弁護人・傍聴席全員を同じ物差し(裁判内スコア)で
+    並べてランキングを出し、上位者に永続ポイント(RANKING_REWARDSの10/6/3、
+    4位以下は0)を付与する。同スコアの人は同順位・同ポイントになる。
+    戻り値: [{"name", "role", "score", "rank"}, ...] （スコア降順）"""
+    entries = []
+    for role in ("defendant", "prosecutor", "defense"):
+        name = lobby_state.get(role)
+        if name:
+            entries.append({"name": name, "role": role, "score": _court_role_score(role, outcome)})
+
+    for name, balance in lobby_state["wallets"].items():
+        entries.append({"name": name, "role": "gallery", "score": balance})
+
+    entries.sort(key=lambda e: e["score"], reverse=True)
+
+    # 同スコアなら同順位にする(例: 20, 20, 14, 10 → 順位は 1, 1, 2, 3)
+    rank = 0
+    prev_score = None
+    for entry in entries:
+        if entry["score"] != prev_score:
+            rank += 1
+            prev_score = entry["score"]
+        entry["rank"] = rank
+        reward = RANKING_REWARDS[rank - 1] if rank <= len(RANKING_REWARDS) else 0
+        entry["bonus_points"] = reward
+        token = lobby_state["player_tokens"].get(entry["name"])
+        if token:
+            award_points(token, reward)
+
+    return entries
