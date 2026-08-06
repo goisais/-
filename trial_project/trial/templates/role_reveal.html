@@ -11,7 +11,7 @@
       <div style="font-size: 11px; color: var(--gold); margin-top: 4px;">ログイン中: {{ my_name }}</div>
     </div>
 
-    <div class="reveal-center">
+    <div class="reveal-center" id="reveal-center">
       <div class="pre-label">あなたの役割は…</div>
       <div class="role-circle" style="border: 3px solid {% if role.accent == 'danger' %}var(--danger){% else %}var(--accent-blue){% endif %};">
         <i class="ti {{ role.icon }}" style="color: {% if role.accent == 'danger' %}var(--danger){% else %}var(--accent-blue){% endif %};"></i>
@@ -20,11 +20,91 @@
       <div class="role-desc">{{ role.description }}</div>
     </div>
 
+    {% if game_mode and case_template %}
+    <!-- ゲーム形式: お題の詳細をここで確認してから、カウントダウンで全員一斉に開廷する -->
+    <div class="field" style="padding-top: 0;">
+      <div style="background: rgba(250, 236, 231, 0.15); border-radius: 10px; padding: 12px 14px; font-size: 12px; color: var(--text-cream-muted); line-height: 1.7;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+          <span style="font-size: 13px; font-weight: 600; color: var(--gold);">{{ case_template.title }}</span>
+          <span style="font-size: 10px; border: 1px solid var(--gold); color: var(--gold); border-radius: 4px; padding: 1px 6px;">難易度：{{ difficulty_label }}</span>
+        </div>
+        <div><strong style="color: var(--cream);">罪状：</strong>{{ case_template.charge }}</div>
+        <div style="margin-top: 4px;"><strong style="color: var(--cream);">状況：</strong>{{ case_template.situation }}</div>
+        <div style="margin-top: 4px;"><strong style="color: var(--cream);">被告人の言い分：</strong>{{ case_template.claim }}</div>
+      </div>
+    </div>
+
+    <div class="section-pad" style="padding-top: 0; text-align: center;">
+      <div id="confirm-timer" style="font-size: 11px; color: var(--text-cream-muted);">
+        あと <span id="confirm-seconds">15</span> 秒で開廷準備に入ります…
+      </div>
+      <div id="countdown-display" style="display: none; font-size: 64px; font-weight: 700; color: var(--gold); margin: 10px 0;"></div>
+    </div>
+    {% else %}
     <div class="section-pad" style="padding-top: 0;">
       <!-- 入廷すると法廷配信画面（ホスト/参加者共通）へ -->
       <a href="/trial" class="btn-primary" style="text-decoration: none;">入廷する</a>
     </div>
+    {% endif %}
 
   </div>
 </div>
+
+{% if game_mode and case_template %}
+<script>
+  // ゲーム形式だけ: 15秒の確認時間 → 5,4,3,2,1のカウントダウン(音つき) → 0で全員自動的に法廷画面へ。
+  // 今までの「入廷するボタン」だと押すタイミングが人によってバラバラで、被告人の
+  // 発言が聞き取れない人が出ていたので、全員同時に切り替わるようにしている。
+  let audioCtx = null;
+  function beep(freq, duration) {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.frequency.value = freq;
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    } catch (err) {
+      console.error("カウントダウン音を再生できませんでした", err);
+    }
+  }
+
+  let confirmSeconds = 15;
+  const confirmTimerEl = document.getElementById("confirm-timer");
+  const confirmSecondsEl = document.getElementById("confirm-seconds");
+  const countdownDisplay = document.getElementById("countdown-display");
+
+  const confirmInterval = setInterval(() => {
+    confirmSeconds -= 1;
+    confirmSecondsEl.textContent = confirmSeconds;
+    if (confirmSeconds <= 0) {
+      clearInterval(confirmInterval);
+      startCountdown();
+    }
+  }, 1000);
+
+  function startCountdown() {
+    confirmTimerEl.style.display = "none";
+    countdownDisplay.style.display = "block";
+    let n = 5;
+    countdownDisplay.textContent = n;
+    beep(880, 0.15);
+    const countdownInterval = setInterval(() => {
+      n -= 1;
+      if (n > 0) {
+        countdownDisplay.textContent = n;
+        beep(880, 0.15);
+      } else {
+        countdownDisplay.textContent = "開廷!";
+        beep(1320, 0.3);
+        clearInterval(countdownInterval);
+        setTimeout(() => { window.location.href = "/trial"; }, 500);
+      }
+    }, 1000);
+  }
+</script>
+{% endif %}
 {% endblock %}

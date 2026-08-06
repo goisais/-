@@ -10,38 +10,64 @@
       <div style="font-size: 11px; color: var(--text-cream-muted); margin-top: 4px;">くだらないほど盛り上がる、模擬裁判エンタメ</div>
     </div>
 
-    <!-- 名前入力とホスト/参加者の選択を1つのフォームにまとめている。
-         誰でも名前を入れれば参加できる仕組みなので、事前登録や固定メンバーは無し。 -->
-    <form action="{% url 'enter' %}" method="post" id="login-form">
-      {% csrf_token %}
-      <!-- メール登録などの手間なしで、ポイントを次の裁判にも持ち越せるように、
-           ブラウザに紐づく匿名トークンをこっそり発行してサーバーに送る。
-           同じブラウザで同じ名前を使う限り、ポイントが引き継がれる仕組み -->
-      <input type="hidden" name="player_token" id="player-token-input" value="" />
-      {% if error %}
-      <div style="margin: 0 16px; background: rgba(214, 69, 69, 0.15); border: 1px solid var(--danger); border-radius: 6px; padding: 8px 12px; font-size: 12px; color: var(--danger);">
-        {{ error }}
-      </div>
-      {% endif %}
+    <!-- お名前は共通の入力欄を1つだけ持たせて、送信するフォーム(自由形式ホスト/
+         ゲーム形式ホスト/参加者)を切り替えるときにJSでコピーする -->
+    <div class="field">
+      <label for="username-shared">お名前</label>
+      <input type="text" id="username-shared" placeholder="例：たかし (10字以内) " value="{{ username|default:'' }}" maxlength="10" required />
+    </div>
 
-      <div class="field">
-        <label for="username">お名前</label>
-        <input type="text" id="username" name="username" placeholder="例：たかし (10字以内) " value="{{ username|default:'' }}" maxlength="10" required />
-      </div>
+    {% if error %}
+    <div style="margin: 0 16px; background: rgba(214, 69, 69, 0.15); border: 1px solid var(--danger); border-radius: 6px; padding: 8px 12px; font-size: 12px; color: var(--danger);">
+      {{ error }}
+    </div>
+    {% endif %}
 
-      <div class="section-pad" style="padding-top: 18px; padding-bottom: 4px;">
-        <div class="helper-text" style="margin-bottom: 8px;">はじめかたを選んでね</div>
+    <div class="section-pad" style="padding-top: 12px; padding-bottom: 4px;">
+      <div class="helper-text" style="margin-bottom: 8px;">はじめかたを選んでね</div>
 
-        <button type="submit" name="role" value="host" class="option-card host">
+      <!-- ホスト: 自由形式(今まで通り、被告人・制限時間を自分で決める) -->
+      <form action="{% url 'enter' %}" method="post" class="host-form">
+        {% csrf_token %}
+        <input type="hidden" name="username" class="username-mirror" value="" />
+        <input type="hidden" name="player_token" class="player-token-input" value="" />
+        <input type="hidden" name="role" value="host" />
+        <input type="hidden" name="mode" value="classic" />
+        <button type="submit" class="option-card host">
           <div class="icon-circle" style="background: var(--danger);">
             <i class="ti ti-gavel" style="font-size: 19px; color: var(--on-danger);"></i>
           </div>
           <div>
-            <div style="font-size: 14px; font-weight: 500; color: var(--text-dark);">ホストとして開廷する</div>
-            <div style="font-size: 11px; color: var(--text-brown-muted); margin-top: 2px;">裁判を作って参加者を招待する</div>
+            <div style="font-size: 14px; font-weight: 500; color: var(--text-dark);">自由形式で開廷する</div>
+            <div style="font-size: 11px; color: var(--text-brown-muted); margin-top: 2px;">被告人・制限時間を自分で決める、いつもの裁判</div>
           </div>
         </button>
+      </form>
 
+      <!-- ホスト: ゲーム形式(お題・被告人はランダム抽選、ベット/ランキングあり) -->
+      <form action="{% url 'enter' %}" method="post" class="host-form">
+        {% csrf_token %}
+        <input type="hidden" name="username" class="username-mirror" value="" />
+        <input type="hidden" name="player_token" class="player-token-input" value="" />
+        <input type="hidden" name="role" value="host" />
+        <input type="hidden" name="mode" value="game" />
+        <button type="submit" class="option-card host" style="border-color: var(--gold); background: var(--cream);">
+          <div class="icon-circle" style="background: var(--gold);">
+            <i class="ti ti-dice-6" style="font-size: 19px; color: var(--wood-dark);"></i>
+          </div>
+          <div>
+            <div style="font-size: 14px; font-weight: 500; color: var(--text-dark);">ゲーム形式で開廷する</div>
+            <div style="font-size: 11px; color: var(--text-brown-muted); margin-top: 2px;">お題・被告人はランダム抽選。ベット＆ランキングあり</div>
+          </div>
+        </button>
+      </form>
+
+      <!-- 参加者 -->
+      <form action="{% url 'enter' %}" method="post" id="participant-form">
+        {% csrf_token %}
+        <input type="hidden" name="username" class="username-mirror" value="" />
+        <input type="hidden" name="player_token" class="player-token-input" value="" />
+        <input type="hidden" name="role" value="participant" />
         <div class="option-card guest" style="cursor: default;">
           <div class="icon-circle" style="background: var(--bronze);">
             <i class="ti ti-door-enter" style="font-size: 19px; color: var(--cream);"></i>
@@ -51,17 +77,17 @@
             <div style="font-size: 11px; color: var(--text-cream-muted); margin: 2px 0 8px;">ホストから聞いた招待コードを入れてね</div>
             <input type="text" name="access_code" placeholder="招待コード（例：1234）" maxlength="4"
                    style="width: 100%; background: var(--cream); border: 1px solid var(--wood-dark); border-radius: 6px; padding: 7px 10px; font-size: 13px; color: var(--text-dark); box-sizing: border-box;" />
-            <button type="submit" name="role" value="participant" class="btn-primary" style="margin-top: 8px; padding: 8px;">参加する</button>
+            <button type="submit" class="btn-primary" style="margin-top: 8px; padding: 8px;">参加する</button>
           </div>
         </div>
-      </div>
-    </form>
+      </form>
+    </div>
 
     <div style="height: 18px;"></div>
   </div>
 </div>
 <script>
-  // このブラウザ用の匿名トークンを取得(無ければ発行して保存)し、フォームに埋め込む。
+  // このブラウザ用の匿名トークンを取得(無ければ発行して保存)し、全フォームに埋め込む。
   // メール登録などは一切不要で、同じブラウザ・同じ名前で入れば過去のポイントが続く。
   (function () {
     const STORAGE_KEY = "trial_player_token";
@@ -72,8 +98,24 @@
         : "tok-" + Date.now() + "-" + Math.random().toString(16).slice(2);
       localStorage.setItem(STORAGE_KEY, token);
     }
-    const input = document.getElementById("player-token-input");
-    if (input) input.value = token;
+    document.querySelectorAll(".player-token-input").forEach((el) => { el.value = token; });
   })();
+
+  // お名前欄は1つだけ表示して、送信するフォームに応じてコピーする
+  const sharedUsername = document.getElementById("username-shared");
+  function syncUsername() {
+    document.querySelectorAll(".username-mirror").forEach((el) => { el.value = sharedUsername.value; });
+  }
+  sharedUsername.addEventListener("input", syncUsername);
+  document.querySelectorAll("form").forEach((form) => {
+    form.addEventListener("submit", (e) => {
+      syncUsername();
+      if (!sharedUsername.value.trim()) {
+        e.preventDefault();
+        sharedUsername.focus();
+        alert("お名前を入力してください");
+      }
+    });
+  });
 </script>
 {% endblock %}

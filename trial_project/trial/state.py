@@ -116,6 +116,109 @@ ROLE_META = {
 }
 
 
+# ---------- ゲーム形式のお題テンプレ ----------
+# 難易度は「弁護側(被告人+弁護人)にとってどれだけ不利か」の1本軸。
+#   easy   = 弁護側有利(検察がアンダードッグ)
+#   medium = 五分五分
+#   hard   = 弁護側不利(被告人・弁護人がアンダードッグ)
+# ここではスコアのボーナス計算には使わない(オッズは賭けの偏りで自然に決まるので)。
+# 主に演出(お題発表画面での「難易度」表示)用のフレーバー情報。
+CASE_TEMPLATES = [
+    {
+        "title": "電車寝坊で大遅刻事件",
+        "charge": "部活の大事な大会の集合に1時間遅刻した",
+        "situation": "大会当日の朝、集合時間になっても被告人が現れず、みんなが1時間待った。",
+        "claim": "目覚まし全部鳴らしたのに寝過ごした。前日は準備で夜遅くまで頑張ってた。",
+        "questions": ["本当に準備してた証拠はある?", "目覚ましを何個セットしてた?"],
+        "difficulty": "easy",
+    },
+    {
+        "title": "模試当日寝坊事件",
+        "charge": "大事な模試の日に遅刻した",
+        "situation": "模試当日、開始時刻を過ぎても被告人が会場に現れなかった。",
+        "claim": "体調不良で薬を飲んだら熟睡してしまった。",
+        "questions": ["体調不良なら病院の記録は?", "前日は何時に寝た?"],
+        "difficulty": "easy",
+    },
+    {
+        "title": "忘れ物で待ち合わせ大遅刻事件",
+        "charge": "待ち合わせに家まで戻ったせいで大遅刻した",
+        "situation": "待ち合わせの直前、被告人が突然「忘れ物を取りに戻る」と言って家に引き返した。",
+        "claim": "相手のために大事なものを取りに戻っただけ。",
+        "questions": ["その『大事なもの』を今すぐ見せられる?", "LINEで一言連絡はできたのでは?"],
+        "difficulty": "easy",
+    },
+    {
+        "title": "立ち話で遅刻事件",
+        "charge": "友達との立ち話が長引いて約束の時間に遅刻した",
+        "situation": "道端で友達に話しかけられ、そのまま長時間立ち話をしてしまい遅刻した。",
+        "claim": "本当に切り上げようとしたけど、相手が話を続けた。",
+        "questions": ["切り上げるタイミングは何度もあったのでは?", "その間スマホは触ってた?"],
+        "difficulty": "easy",
+    },
+    {
+        "title": "割り勘バックレ事件",
+        "charge": "飲み会の会計時に『財布がない』と言ってその場を去った",
+        "situation": "会計のタイミングで被告人が急に財布がないと言い出し、そのまま先に帰ってしまった。",
+        "claim": "本当に財布を無くしていて、後で必ず払うつもりだった。",
+        "questions": ["その後ちゃんと連絡して払ったのか?", "財布は本当に見つかったのか?"],
+        "difficulty": "medium",
+    },
+    {
+        "title": "借り物破損隠蔽事件",
+        "charge": "友達から借りたものを壊したのに、しばらく黙っていた",
+        "situation": "借りていたものが壊れていることに気づいていたが、返す直前まで何も言わなかった。",
+        "claim": "気づいたのが返す直前で、パニックになって言い出せなかった。",
+        "questions": ["気づいてからどれくらい黙ってた?", "隠そうとした形跡はある?"],
+        "difficulty": "medium",
+    },
+    {
+        "title": "課題未提出(アプリ不具合主張)事件",
+        "charge": "期限までに課題を提出できなかった",
+        "situation": "提出期限の直前、課題提出アプリがフリーズして提出できなかったと主張している。",
+        "claim": "本当にやったし提出しようとした。スクショも撮ってある。",
+        "questions": ["そのスクショ、いつ撮った?", "先生に事前連絡はした?"],
+        "difficulty": "medium",
+    },
+    {
+        "title": "犬が宿題を食べた事件",
+        "charge": "宿題を提出できなかった",
+        "situation": "宿題が未提出のまま提出期限を迎えた。",
+        "claim": "本当に飼い犬が宿題を全部食べた。証拠は犬の口についた紙くず。",
+        "questions": ["食べかすの写真はある?", "そんな大量の紙を犬が食べて無事なのか?"],
+        "difficulty": "hard",
+    },
+    {
+        "title": "UFO誘拐スピーチ欠席事件",
+        "charge": "友人の結婚式のスピーチを完全にすっぽかした",
+        "situation": "結婚式当日、スピーチの出番が来ても被告人は会場に現れず、一切連絡もなかった。",
+        "claim": "前日の夜にUFOに連れ去られていて、気づいたら朝で連絡する余裕がなかった。",
+        "questions": ["目撃者はいるのか?", "その間のスマホの履歴はどうなってる?"],
+        "difficulty": "hard",
+    },
+    {
+        "title": "異国突然出現事件",
+        "charge": "大事な用事に3日間音信不通だった",
+        "situation": "3日間まったく連絡が取れず、みんなが心配していたところ、突然帰ってきた。",
+        "claim": "気づいたら知らない国の空港にいて、パスポートも財布もなかった。",
+        "questions": ["どうやって帰ってきたのか?", "航空券の記録は?"],
+        "difficulty": "hard",
+    },
+]
+
+DIFFICULTY_LABELS = {"easy": "易", "medium": "中", "hard": "難"}
+
+
+def pick_random_case_template():
+    return dict(random.choice(CASE_TEMPLATES))
+
+
+def pick_random_defendant():
+    if not lobby_state["participants"]:
+        return None
+    return random.choice(lobby_state["participants"])
+
+
 def make_initial_state():
     return {
         "access_code": "",  # ホストが開廷準備を始めるたびに新しく発行される4桁コード
@@ -142,6 +245,9 @@ def make_initial_state():
         "wallets": {},  # 傍聴席の名前 -> 裁判内ポイント残高(毎裁判10pからスタート)
         "bets": {},  # 傍聴席の名前 -> [{"choice": "guilty"/"innocent", "amount": int}, ...] (複数回OK)
         "bet_counts": {"guilty": 0, "innocent": 0},  # 賭けられた「件数」(金額は見せない、ブラフ用)
+        "mode": "classic",  # "classic"(今までの自由形式) or "game"(ユーモア王選手権むけの新モード)
+        "case_template": None,  # ゲーム形式で抽選されたお題(タイトル・罪状・状況・言い分・難易度)
+        "ranking": None,  # ゲーム形式の判決確定時に計算される、その裁判のランキング結果
     }
 
 
@@ -234,6 +340,47 @@ def start_trial(case_name, defendant):
             "voters": [],
             "verdict_result": None,  # {"outcome": "guilty"/"innocent", "sentence": str|None, "tier": "normal"/"wanted"}
             "defendant_face_capture": None,  # 被告人の顔切り抜き画像(data URL文字列)
+            "trial_round": 1,
+            "judge_name": None,
+            "wallets": _init_gallery_wallets(role_map),
+            "bets": {},
+            "bet_counts": {"guilty": 0, "innocent": 0},
+        }
+    )
+
+
+GAME_MODE_PHASE_SECONDS = 60  # ゲーム形式は全フェーズ1分固定(お題の難易度に関わらず)
+
+
+def start_trial_game_mode(defendant, case_template):
+    """ゲーム形式の裁判開始。自由形式のstart_trial()とほぼ同じ流れだが、
+    フェーズ時間は毎回1分固定、mode="game"、抽選されたお題(case_template)を保持する。
+    自由形式のstart_trial()自体は一切変更していない"""
+    prosecutor, defense = _draw_prosecutor_and_defense(defendant)
+    role_map = _build_role_map(defendant, prosecutor, defense)
+    duration = GAME_MODE_PHASE_SECONDS
+
+    lobby_state.update(
+        {
+            "mode": "game",
+            "case_name": case_template["title"],
+            "case_template": case_template,
+            "defendant": defendant,
+            "trial_started": True,
+            "prosecutor": prosecutor,
+            "defense": defense,
+            "role_map": role_map,
+            "objection_count": 0,
+            "comments": [],
+            "phase_durations": {"defendant": duration, "prosecutor": duration, "defense": duration},
+            "phase_index": 0,
+            "phase_remaining": duration,
+            "gauges": {"nervousness": 50, "suspicion": 50},
+            "voting_open": False,
+            "votes": {"guilty": 0, "innocent": 0},
+            "voters": [],
+            "verdict_result": None,
+            "defendant_face_capture": None,
             "trial_round": 1,
             "judge_name": None,
             "wallets": _init_gallery_wallets(role_map),
@@ -521,4 +668,5 @@ def compute_game_mode_ranking(outcome):
         if token:
             award_points(token, reward)
 
+    lobby_state["ranking"] = entries
     return entries

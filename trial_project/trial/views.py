@@ -29,6 +29,11 @@ from trial.state import (
     reset_for_new_round,
     get_or_create_profile,
     get_points,
+    start_trial_game_mode,
+    pick_random_case_template,
+    pick_random_defendant,
+    DIFFICULTY_LABELS,
+    GAME_MODE_PHASE_SECONDS,
 )
 from trial.sockets import notify_participants_updated, notify_trial_started, start_phase_timer
 
@@ -66,16 +71,21 @@ def enter(request):
     request.session["player_token"] = player_token
 
     if role == "host":
+        # スプラトゥーンのレギュラー/ガチマッチみたいに、開廷する前に形式を選ぶ。
+        # 自由形式(classic)=今まで通り、ゲーム形式(game)=お題抽選+ベットの新モード
+        game_mode = (request.POST.get("mode") == "game")
+
         request.session["username"] = username
         request.session["is_host"] = True
         # ホストが「ホストとして開廷する」を押すたびに、新しい部屋(コード)として作り直す
         reset_for_new_round()
         lobby_state["host_name"] = username
+        lobby_state["mode"] = "game" if game_mode else "classic"
         # ホスト自身も参加者の1人（被告人になれるし、待機画面の一覧にも出る）
         if username not in lobby_state["participants"]:
             lobby_state["participants"].append(username)
         lobby_state["player_tokens"][username] = player_token
-        return redirect("host_setup")
+        return redirect("host_setup_game" if game_mode else "host_setup")
 
     # 参加者として参加する場合は、招待コードの一致を確認する
     entered_code = (request.POST.get("access_code") or "").strip()
@@ -141,6 +151,34 @@ def host_setup_start(request):
     return redirect("trial")
 
 
+def host_setup_game(request):
+    """ゲーム形式: ホストは被告人もお題も選ばない。参加者一覧を確認して
+    「抽選して開廷する」を押すだけ(被告人・お題ともにランダム抽選)"""
+    return render(
+        request,
+        "host_setup_game.html",
+        {
+            "participants": lobby_state["participants"],
+            "access_code": lobby_state["access_code"],
+        },
+    )
+
+
+def host_setup_game_start(request):
+    if request.method != "POST":
+        return redirect("host_setup_game")
+
+    defendant = pick_random_defendant()
+    if not defendant:
+        return redirect("host_setup_game")
+
+    case_template = pick_random_case_template()
+    start_trial_game_mode(defendant, case_template)
+    notify_trial_started()
+    start_phase_timer()
+    return redirect("trial")
+
+
 def join_waiting(request):
     if "username" not in request.session:
         return redirect("index")
@@ -161,7 +199,13 @@ def role_reveal(request):
     if not username or not role_key:
         return redirect("index")
     role = {"key": role_key, **ROLE_META[role_key]}
-    return render(request, "role_reveal.html", {"role": role, "my_name": username})
+    game_mode = lobby_state.get("mode") == "game"
+    case_template = lobby_state.get("case_template") if game_mode else None
+    context = {"role": role, "my_name": username, "game_mode": game_mode}
+    if case_template:
+        context["case_template"] = case_template
+        context["difficulty_label"] = DIFFICULTY_LABELS.get(case_template.get("difficulty"), "")
+    return render(request, "role_reveal.html", context)
 
 
 def trial(request):
@@ -190,6 +234,9 @@ def trial(request):
     innocent = state["votes"]["innocent"]
     total_votes = guilty + innocent
 
+    game_mode = state.get("mode") == "game"
+    already_bet = my_name in state["bets"] if game_mode else False
+
     return render(
         request,
         "trial.html",
@@ -213,6 +260,11 @@ def trial(request):
             "is_host": is_host,
             "trial_round": state["trial_round"],
             "judge_name": state["judge_name"],
+            "game_mode": game_mode,
+            "case_template": state.get("case_template"),
+            "wallet_balance": state["wallets"].get(my_name),
+            "bet_counts": state["bet_counts"],
+            "already_bet": already_bet,
         },
     )
 
@@ -223,6 +275,7 @@ def verdict(request):
     置くと自動で背景に使われる（無ければ顔写真だけ表示される）。"""
     state = lobby_state
     result = state["verdict_result"] or {"outcome": "innocent", "sentence": None, "tier": "normal"}
+    my_name = request.session.get("username", "")
     return render(
         request,
         "verdict.html",
@@ -233,5 +286,8 @@ def verdict(request):
             "sentence": result["sentence"],
             "tier": result.get("tier", "normal"),
             "face_capture": state["defendant_face_capture"],
+            "game_mode": state.get("mode") == "game",
+            "ranking": state.get("ranking"),
+            "my_name": my_name,
         },
     )
