@@ -471,6 +471,42 @@ body {
   gap: 6px;
 }
 
+/* ゲーム形式: 検察官/弁護人の発言中に映像全体へ重ねる、大きく半透明の役職名表示。
+   半透明にすることで、被告人の顔を隠さずに「今誰が話しているか」を演出する */
+.speaker-indicator-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+}
+
+.speaker-indicator-inner {
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 16px;
+  padding: 10px 20px;
+  transform: rotate(-3deg);
+}
+
+.speaker-indicator-role {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 5px;
+  color: rgba(255, 255, 255, 0.55);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+}
+
+.speaker-indicator-name {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
 .gauge {
   flex: 1;
   background: rgba(0, 0, 0, 0.45);

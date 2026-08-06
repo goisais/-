@@ -62,6 +62,18 @@
         <div class="tag-defendant">被告人：{{ defendant_name }}</div>
         <div class="tag-evidence" id="speaking-tag" style="display: none;">発言中</div>
 
+        {% if game_mode %}
+        <!-- ゲーム形式: 検察質問/弁護士弁護のフェーズ中だけ、大きく半透明の役職名を
+             映像全体に重ねて表示する(半透明なので被告人の顔は透けて見える。声だけの
+             出演者が「今誰が話しているか」を全員にひと目でわかるようにする演出) -->
+        <div class="speaker-indicator-overlay" id="speaker-indicator-overlay" style="display: none;">
+          <div class="speaker-indicator-inner">
+            <div class="speaker-indicator-role" id="speaker-indicator-role"></div>
+            <div class="speaker-indicator-name" id="speaker-indicator-name"></div>
+          </div>
+        </div>
+        {% endif %}
+
         <div class="gauge-row">
           <div class="gauge">
             <div class="gauge-label"><span>動揺度</span><span id="nervousness-value">{{ gauges.nervousness }}%</span></div>
@@ -852,6 +864,7 @@
       const tag = document.getElementById("speaking-tag");
       tag.textContent = (peer ? peer.name : "発言者") + " 発言中";
       tag.style.display = "block";
+      showSpeakerIndicator(peer);
     }
   }
 
@@ -859,7 +872,28 @@
     const peer = knownPeers[sid];
     if (peer && peer.role !== "defendant") {
       document.getElementById("speaking-tag").style.display = "none";
+      hideSpeakerIndicator();
     }
+  }
+
+  // ---- ゲーム形式: 検察質問/弁護士弁護フェーズ中の、大きく半透明な役職名表示 ----
+  const ROLE_INDICATOR_LABEL = { prosecutor: "検察官", defense: "弁護人" };
+
+  function showSpeakerIndicator(peer) {
+    if (!gameMode || !peer) return;
+    const overlay = document.getElementById("speaker-indicator-overlay");
+    if (!overlay) return;
+    const roleEl = document.getElementById("speaker-indicator-role");
+    const nameEl = document.getElementById("speaker-indicator-name");
+    roleEl.textContent = ROLE_INDICATOR_LABEL[peer.role] || "発言中";
+    nameEl.textContent = peer.name || "";
+    overlay.style.display = "flex";
+  }
+
+  function hideSpeakerIndicator() {
+    if (!gameMode) return;
+    const overlay = document.getElementById("speaker-indicator-overlay");
+    if (overlay) overlay.style.display = "none";
   }
 
   socket.on("trial_peer_list", (data) => {
