@@ -18,6 +18,7 @@ def generate_access_code():
 # 経験上、動画自体にアルファチャンネルを持たせるより確実に動く)。
 # 全素材 260x260 に統一済み(元の比率を保ったまま緑パディング)、音声あり。
 GIFT_ASSETS = [f"gift_{i:02d}.mp4" for i in range(1, 16)]
+GIFT_COST = 3  # 1回送るのに使う裁判内ポイント(傍聴席の10p持ち点のうち)
 
 
 # ---------- アカウント永続化(メール登録なしの匿名プロフィール) ----------
@@ -657,6 +658,37 @@ def use_objection_card(name, role):
     lobby_state["phase_remaining"] -= steal
     used[role] = True
     return True, steal
+
+
+# 投げ銭(妨害ギフト)のタイミング制限。被告人陳述フェーズ(自分の裁判)中は最初の40秒は
+# 送れず、残り20秒(=経過40秒以降)だけ解禁する。検察質問・弁護士弁護フェーズ中は
+# タイミング無制限。フェーズが進んでいない/終わっている場合は送れない
+GIFT_LOCKED_REMAINING_THRESHOLD = 20  # 被告人陳述フェーズは残りがこの秒数以下になるまで送れない
+
+
+def send_gift(name, gift_index):
+    """傍聴席が自分の裁判内ポイントを使って、妨害ギフト動画を送る。
+    金額はGIFT_COST固定。成功したら(True, 送信後の残高)、失敗したら(False, 理由)を返す"""
+    if lobby_state.get("mode") != "game":
+        return False, "not_game_mode"
+    if lobby_state["role_map"].get(name) != "gallery":
+        return False, "not_gallery"
+    if not isinstance(gift_index, int) or not (0 <= gift_index < len(GIFT_ASSETS)):
+        return False, "invalid_gift"
+
+    phase_index = lobby_state["phase_index"]
+    if phase_index == 0:
+        if lobby_state["phase_remaining"] > GIFT_LOCKED_REMAINING_THRESHOLD:
+            return False, "defendant_statement_locked"
+    elif phase_index not in (1, 2):
+        return False, "no_active_phase"
+
+    balance = lobby_state["wallets"].get(name, 0)
+    if balance < GIFT_COST:
+        return False, "insufficient_balance"
+
+    lobby_state["wallets"][name] = balance - GIFT_COST
+    return True, lobby_state["wallets"][name]
 
 # 傍聴席全員(役職者以外)の最終順位に応じて付与する永続ポイント。
 # 同じスコアの人は同じ順位・同じ永続ポイントになる(例:1位が2人ならどちらも10p)

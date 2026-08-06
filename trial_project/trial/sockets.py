@@ -27,6 +27,8 @@ from trial.state import (
     determine_verdict_game_mode,
     compute_game_mode_ranking,
     use_objection_card as _use_objection_card,
+    send_gift as _send_gift,
+    GIFT_ASSETS,
 )
 
 LOBBY_ROOM = "lobby"
@@ -181,6 +183,31 @@ def use_objection_card(sid, data):
         )
     else:
         sio.emit("objection_card_rejected", {"reason": result}, to=sid)
+
+
+@sio.event
+def send_gift(sid, data):
+    """ゲーム形式専用: 傍聴席が自分の裁判内ポイントを使って妨害ギフト動画を送る。
+    タイミング制限(被告人陳述フェーズの最初の40秒は不可)・残高チェックはsend_gift()側で行う。
+    実際の動画再生・クロマキー処理・音量調整はすべてクライアント側(各ブラウザ)で行う"""
+    name = (data or {}).get("name") or ""
+    raw_index = (data or {}).get("gift_index")
+    try:
+        gift_index = int(raw_index)
+    except (TypeError, ValueError):
+        sio.emit("gift_rejected", {"reason": "invalid_gift"}, to=sid)
+        return
+
+    ok, result = _send_gift(name, gift_index)
+    if ok:
+        sio.emit("gift_placed", {"balance": result}, to=sid)
+        sio.emit(
+            "gift_sent",
+            {"name": name, "gift_index": gift_index, "asset": GIFT_ASSETS[gift_index]},
+            room=TRIAL_ROOM,
+        )
+    else:
+        sio.emit("gift_rejected", {"reason": result}, to=sid)
 
 
 @sio.event

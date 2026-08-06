@@ -507,6 +507,36 @@ body {
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 
+/* ゲーム形式: 投げ銭(妨害ギフト)の再生層。被告人の顔付近(枠の右下寄り)に重ねて表示する。
+   複数同時に送られてもここに積み重なって表示される(JS側で少しずつランダムにずらす) */
+.gift-overlay-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 42;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.gift-clip {
+  position: absolute;
+  right: 4%;
+  bottom: 30%;
+  width: 42%;
+  max-width: 120px;
+  animation: gift-pop 0.35s ease-out;
+}
+
+.gift-clip canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+@keyframes gift-pop {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
 .gauge {
   flex: 1;
   background: rgba(0, 0, 0, 0.45);

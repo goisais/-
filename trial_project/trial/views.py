@@ -34,6 +34,8 @@ from trial.state import (
     pick_random_defendant,
     DIFFICULTY_LABELS,
     GAME_MODE_PHASE_SECONDS,
+    GIFT_ASSETS,
+    GIFT_COST,
 )
 from trial.sockets import notify_participants_updated, notify_trial_started, start_phase_timer
 
@@ -239,6 +241,9 @@ def trial(request):
     is_lawyer = my_role in ("prosecutor", "defense")
     objection_card_used = state.get("objection_card_used", {}).get(my_role, False) if is_lawyer else False
 
+    gift_assets = GIFT_ASSETS if game_mode else []
+    gift_asset_paths = [f"trial/video/gifts/{a}" for a in gift_assets]
+
     return render(
         request,
         "trial.html",
@@ -269,6 +274,10 @@ def trial(request):
             "already_bet": already_bet,
             "is_lawyer": is_lawyer,
             "objection_card_used": objection_card_used,
+            "gift_assets": gift_assets,
+            "gift_asset_paths": gift_asset_paths,
+            "gift_cost": GIFT_COST,
+            "gift_range": range(len(GIFT_ASSETS)) if game_mode else range(0),
         },
     )
 

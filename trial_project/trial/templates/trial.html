@@ -59,6 +59,13 @@
         <div class="placeholder" id="video-placeholder">
           <i class="ti ti-user"></i>
         </div>
+
+        {% if game_mode %}
+        <!-- ゲーム形式: 傍聴席が送った投げ銭(妨害ギフト)動画が、被告人の顔付近に重なって再生される層。
+             緑背景の動画をここでキャンバスに描き直し、ピクセル単位で緑を透明化して表示する -->
+        <div class="gift-overlay-layer" id="gift-overlay-layer"></div>
+        {% endif %}
+
         <div class="tag-defendant">被告人：{{ defendant_name }}</div>
         <div class="tag-evidence" id="speaking-tag" style="display: none;">発言中</div>
 
@@ -150,6 +157,32 @@
       </div>
       <div id="bet-result-note" style="text-align: center; font-size: 11px; margin-top: 6px;"></div>
       {% endif %}
+    </div>
+    {% endif %}
+
+    {% if game_mode and my_role == "gallery" %}
+    <!-- ゲーム形式: 傍聴席だけが送れる投げ銭(妨害ギフト)。被告人陳述フェーズ中は
+         最初の40秒送れず、残り20秒だけ解禁(検察質問・弁護士弁護フェーズは無制限) -->
+    <div class="verdict-box" id="gift-box" style="margin-top: 10px;">
+      <div class="verdict-title">妨害ギフトを送る<span style="font-size: 11px; font-weight: 400;">（1回{{ gift_cost }}p）</span></div>
+      <div class="gift-picker-row" id="gift-picker-row" style="display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 6px;">
+        {% for i in gift_range %}
+        <button type="button" class="gift-pick-btn" onclick="sendGift({{ i }})">🎁{{ forloop.counter }}</button>
+        {% endfor %}
+      </div>
+      <div id="gift-result-note" style="text-align: center; font-size: 11px; margin-top: 6px;"></div>
+      <style>
+        .gift-pick-btn {
+          background: var(--cream);
+          border: 1px solid var(--wood-dark);
+          border-radius: 8px;
+          padding: 6px 8px;
+          font-size: 12px;
+          color: var(--text-dark);
+          min-width: 40px;
+        }
+        .gift-pick-btn:active { background: var(--gold); }
+      </style>
     </div>
     {% endif %}
 
@@ -468,6 +501,115 @@
   socket.on("bet_counts_updated", (data) => {
     updateBetCounts(data.counts);
   });
+
+  // ---- ゲーム形式: 投げ銭(妨害ギフト)。緑背景の動画をキャンバスに描き直して
+  // ピクセル単位で緑を透明化する(動画自体のアルファチャンネルには頼らない)。
+  // 音量は参加者の声(WebRTC音声)より小さくし、複数同時に送られても重ねて表示する ----
+  const GIFT_ASSET_FILENAMES = [{% for f in gift_assets %}"{{ f|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+  const GIFT_ASSET_URLS = [{% for p in gift_asset_paths %}"{% static p %}"{% if not forloop.last %},{% endif %}{% endfor %}];
+
+  function sendGift(index) {
+    socket.emit("send_gift", { name: myName, gift_index: index });
+  }
+
+  socket.on("gift_placed", (data) => {
+    updateWalletBalance(data.balance);
+    const note = document.getElementById("gift-result-note");
+    if (note) { note.style.color = "var(--success)"; note.textContent = "ギフトを送りました！"; }
+  });
+
+  socket.on("gift_rejected", (data) => {
+    const note = document.getElementById("gift-result-note");
+    if (!note) return;
+    const reasons = {
+      not_gallery: "傍聴席だけが送れます",
+      invalid_gift: "そのギフトは選べません",
+      defendant_statement_locked: "被告人陳述の最初の40秒は送れません(残り20秒だけ解禁)",
+      no_active_phase: "今は送れません",
+      insufficient_balance: "残高が足りません",
+      not_game_mode: "自由形式では使えません",
+    };
+    note.style.color = "var(--danger)";
+    note.textContent = reasons[data.reason] || "送れませんでした";
+  });
+
+  // 誰が送ったかに関わらず、全員の画面で同時に同じギフトが再生される
+  socket.on("gift_sent", (data) => {
+    spawnGiftClip(data.asset);
+  });
+
+  function spawnGiftClip(assetFilename) {
+    const idx = GIFT_ASSET_FILENAMES.indexOf(assetFilename);
+    const url = idx >= 0 ? GIFT_ASSET_URLS[idx] : null;
+    const layer = document.getElementById("gift-overlay-layer");
+    if (!url || !layer) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "gift-clip";
+    // 複数同時に送られても、少しずつずらして重ねて表示する
+    const offsetX = Math.round(Math.random() * 20 - 10);
+    const offsetY = Math.round(Math.random() * 20 - 10);
+    wrapper.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+
+    const video = document.createElement("video");
+    video.src = url;
+    video.playsInline = true;
+    video.volume = 0.35; // 参加者の声(WebRTC音声)より小さくする
+    video.style.display = "none";
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 200;
+    canvas.height = 200;
+
+    wrapper.appendChild(video);
+    wrapper.appendChild(canvas);
+    layer.appendChild(wrapper);
+
+    const ctx = canvas.getContext("2d");
+    let rafId = null;
+
+    function drawFrame() {
+      if (video.videoWidth) {
+        if (canvas.width !== video.videoWidth) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        chromaKeyFrame(ctx, canvas.width, canvas.height);
+      }
+      if (!video.paused && !video.ended) {
+        rafId = requestAnimationFrame(drawFrame);
+      }
+    }
+
+    video.addEventListener("loadedmetadata", () => {
+      video.play().then(() => requestAnimationFrame(drawFrame))
+        .catch((err) => console.error("ギフト動画の再生に失敗しました", err));
+    });
+    video.addEventListener("ended", () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      setTimeout(() => wrapper.remove(), 200);
+    });
+    // 万が一endedが発火しない環境向けの保険(素材はどれも数秒程度の想定)
+    setTimeout(() => wrapper.remove(), 8000);
+  }
+
+  // 緑背景を1フレームずつ透明化する(動画自体にアルファは焼き込まず、都度ピクセル判定する)
+  function chromaKeyFrame(ctx, w, h) {
+    try {
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const d = imageData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        if (g > 90 && g > r * 1.15 && g > b * 1.15) {
+          d[i + 3] = 0;
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+    } catch (err) {
+      console.error("クロマキー処理に失敗しました(緑背景のまま表示します)", err);
+    }
+  }
 
   // ---- ゲーム形式: 定番コメントのワンタップ送信(自由入力欄と共存) ----
   document.querySelectorAll(".preset-comment-btn").forEach((btn) => {
