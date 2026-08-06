@@ -100,6 +100,47 @@
       </div>
     </div>
 
+    {% if game_mode and case_template %}
+    <!-- ゲーム形式: お題の詳細を法廷画面でもいつでも確認できるようにしておく -->
+    <div class="field" style="padding-top: 0;">
+      <div style="background: rgba(250, 236, 231, 0.5); border-radius: 10px; padding: 10px 12px; font-size: 11px; color: var(--text-brown-muted); line-height: 1.6;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
+          <span style="font-size: 12px; font-weight: 600; color: var(--wood-dark);">{{ case_template.title }}</span>
+          <span style="font-size: 9px; border: 1px solid var(--wood-dark); color: var(--wood-dark); border-radius: 4px; padding: 1px 6px;">難易度：{{ case_template.difficulty|default:"" }}</span>
+        </div>
+        <div><strong>罪状：</strong>{{ case_template.charge }}</div>
+        <div style="margin-top: 3px;"><strong>被告人の言い分：</strong>{{ case_template.claim }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if game_mode %}
+    <!-- ゲーム形式: 有罪/無罪への賭け。傍聴席だけが自分のウォレットから賭けられる。
+         金額は他人には見せず、件数だけを全員にリアルタイム共有する(ブラフ要素) -->
+    <div class="verdict-box" id="betting-box" style="margin-top: 10px;">
+      <div class="verdict-title">
+        賭ける
+        {% if my_role == "gallery" %}<span style="font-size: 11px; font-weight: 400;">（所持: <span id="wallet-balance">{{ wallet_balance|default:0 }}</span>p）</span>{% endif %}
+      </div>
+      <div style="text-align: center; font-size: 11px; color: var(--text-brown-muted); margin-bottom: 8px;">
+        有罪 <span id="bet-count-guilty">{{ bet_counts.guilty|default:0 }}</span>件　/　無罪 <span id="bet-count-innocent">{{ bet_counts.innocent|default:0 }}</span>件
+      </div>
+      {% if my_role == "gallery" %}
+      <div id="betting-controls" style="display: {% if voting_open %}none{% else %}flex{% endif %}; gap: 6px; align-items: center;">
+        <input type="number" id="bet-amount-input" min="1" value="1" style="width: 54px; border: 1px solid var(--wood-dark); border-radius: 6px; padding: 7px 6px; font-size: 13px; text-align: center;" />
+        <button onclick="placeBet('guilty')"
+          style="flex: 1; background: var(--danger); color: var(--on-danger); border: none; border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 500;">有罪に賭ける</button>
+        <button onclick="placeBet('innocent')"
+          style="flex: 1; background: var(--success); color: #fff; border: none; border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 500;">無罪に賭ける</button>
+      </div>
+      <div id="betting-closed-note" style="display: {% if voting_open %}block{% else %}none{% endif %}; text-align: center; font-size: 11px; color: var(--text-brown-muted); margin-top: 6px;">
+        投票が始まったので、賭けは締め切りました
+      </div>
+      <div id="bet-result-note" style="text-align: center; font-size: 11px; margin-top: 6px;"></div>
+      {% endif %}
+    </div>
+    {% endif %}
+
     <!-- 異議ありボタン: サーバーにイベントを送って、全員の画面のカウントを同時に更新 -->
     <div class="objection-btn">
       <button id="objection-button" onclick="sendObjection()">
@@ -116,6 +157,37 @@
         <div class="comment-item"><strong>{{ c.name }}：</strong>{{ c.text }}</div>
         {% endfor %}
       </div>
+      {% if game_mode %}
+      <!-- ゲーム形式だけ: 定番コメントをワンタップで送れるボタン(自由入力欄はそのまま残す) -->
+      <div class="preset-comment-row" id="preset-comment-row"
+        style="display: flex; flex-wrap: wrap; gap: 5px; padding: 0 10px 8px;">
+        <button type="button" class="preset-comment-btn" data-text="それってあなたの感想ですよね？">それってあなたの感想ですよね？</button>
+        <button type="button" class="preset-comment-btn" data-text="もうええでしょう">もうええでしょう</button>
+        <button type="button" class="preset-comment-btn" data-text="なんだろう、嘘つくのやめてもらっていいですか？">なんだろう、嘘つくのやめてもらっていいですか？</button>
+        <button type="button" class="preset-comment-btn" data-text="俺でなきゃ見逃しちゃうね。">俺でなきゃ見逃しちゃうね。</button>
+        <button type="button" class="preset-comment-btn" data-text="若者をいじめて楽しいか">若者をいじめて楽しいか</button>
+        <button type="button" class="preset-comment-btn" data-text="21歳キャバ嬢Vlog〜">21歳キャバ嬢Vlog〜</button>
+        <button type="button" class="preset-comment-btn" data-text="お菓子食べた後は歯磨きするぞー！">お菓子食べた後は歯磨きするぞー！</button>
+        <button type="button" class="preset-comment-btn" data-text="密です">密です</button>
+        <button type="button" class="preset-comment-btn" data-text="おい、笑える">おい、笑える</button>
+        <button type="button" class="preset-comment-btn" data-text="開示だな">開示だな</button>
+        <button type="button" class="preset-comment-btn" data-text="パフェ イワシ">パフェ イワシ</button>
+        <button type="button" class="preset-comment-btn" data-text="1度刃が入ったらスーーー">1度刃が入ったらスーーー</button>
+        <button type="button" class="preset-comment-btn" data-text="幸せならOKです">幸せならOKです</button>
+      </div>
+      <style>
+        .preset-comment-btn {
+          background: var(--cream);
+          border: 1px solid var(--wood-dark);
+          border-radius: 12px;
+          padding: 4px 9px;
+          font-size: 10px;
+          color: var(--text-dark);
+          white-space: nowrap;
+        }
+        .preset-comment-btn:active { background: var(--gold); }
+      </style>
+      {% endif %}
       <div class="comment-input-row">
         <input type="text" id="comment-input" placeholder="コメントを入力…" />
         <button aria-label="送信" onclick="sendComment()">
@@ -186,10 +258,13 @@
   // 2審・3審に進むたびに検察官/弁護人が再抽選されて役割が変わりうるので、letにしている
   let myRole = "{{ my_role|escapejs }}";
   const isHost = {{ is_host|yesno:"true,false" }};
+  const gameMode = {{ game_mode|yesno:"true,false" }};
   const initialJudgeName = {% if judge_name %}"{{ judge_name|escapejs }}"{% else %}null{% endif %};
   socket.emit("join_trial", { name: myName });
 
   let hasVoted = false;
+  // ゲーム形式で一度でも賭けた人は、自分の裁判結果を操作できてしまうため投票できない
+  let hasBet = {{ already_bet|yesno:"true,false" }};
 
   // ---- ログイン中表示・審級表示・退出ボタンの更新 ----
   function updateLoginIndicator() {
@@ -274,6 +349,65 @@
     // 万が一animationendが発火しない環境向けの保険
     setTimeout(() => stamp.remove(), 3000);
   }
+
+  // ---- ゲーム形式: 賭け(ベット) ----
+  function updateBetCounts(counts) {
+    if (!counts) return;
+    const g = document.getElementById("bet-count-guilty");
+    const i = document.getElementById("bet-count-innocent");
+    if (g) g.textContent = counts.guilty;
+    if (i) i.textContent = counts.innocent;
+  }
+
+  function updateWalletBalance(balance) {
+    if (typeof balance !== "number") return;
+    const el = document.getElementById("wallet-balance");
+    if (el) el.textContent = balance;
+  }
+
+  function placeBet(choice) {
+    const input = document.getElementById("bet-amount-input");
+    const amount = parseInt(input ? input.value : "", 10);
+    if (!amount || amount <= 0) return;
+    socket.emit("place_bet", { name: myName, choice, amount });
+  }
+
+  socket.on("bet_placed", (data) => {
+    hasBet = true;
+    updateWalletBalance(data.balance);
+    const note = document.getElementById("bet-result-note");
+    if (note) {
+      note.style.color = "var(--success)";
+      note.textContent = `${data.choice === "guilty" ? "有罪" : "無罪"}に${data.amount}p賭けました`;
+    }
+    // 賭けた人は投票できなくなるので、既に投票ボタンが出ていたら引っ込める
+    document.getElementById("voting-buttons").style.display = "none";
+  });
+
+  socket.on("bet_rejected", (data) => {
+    const note = document.getElementById("bet-result-note");
+    if (!note) return;
+    const reasons = {
+      betting_closed: "投票が始まったので賭けられません",
+      already_voted: "投票した後は賭けられません",
+      insufficient_balance: "残高が足りません",
+      invalid_amount: "金額が正しくありません",
+      not_gallery: "傍聴席だけが賭けられます",
+    };
+    note.style.color = "var(--danger)";
+    note.textContent = reasons[data.reason] || "賭けられませんでした";
+  });
+
+  socket.on("bet_counts_updated", (data) => {
+    updateBetCounts(data.counts);
+  });
+
+  // ---- ゲーム形式: 定番コメントのワンタップ送信(自由入力欄と共存) ----
+  document.querySelectorAll(".preset-comment-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      socket.emit("comment_send", { text: btn.dataset.text, name: myName });
+    });
+  });
 
   // ---- コメント ----
   function sendComment() {
@@ -361,10 +495,22 @@
   socket.on("state_sync", (data) => {
     updateActivePhase(data.phase_index, data.phase_remaining);
     updateGauges(data.gauges);
-    if (data.voting_open) showVoting(data.votes);
+    if (typeof data.wallet_balance === "number") updateWalletBalance(data.wallet_balance);
+    if (data.bet_counts) updateBetCounts(data.bet_counts);
+    if (data.already_bet) hasBet = true;
+    if (data.voting_open) { showVoting(data.votes); closeBettingUi(); }
     currentPhaseIndex = data.phase_index;
     applyBroadcastRules();
   });
+
+  // ---- ゲーム形式: 投票が始まったら賭けのUIを締め切り表示にする ----
+  function closeBettingUi() {
+    if (!gameMode) return;
+    const controls = document.getElementById("betting-controls");
+    if (controls) controls.style.display = "none";
+    const closedNote = document.getElementById("betting-closed-note");
+    if (closedNote) closedNote.style.display = "block";
+  }
 
   socket.on("phase_tick", (data) => {
     updateActivePhase(data.phase_index, data.remaining);
@@ -384,6 +530,7 @@
 
   socket.on("phase_ended", (data) => {
     showVoting(data.votes);
+    closeBettingUi();
     // 全フェーズ終了＝検察官/弁護人の発言タイムも終わりなので、マイクを止める
     currentPhaseIndex = -2;
     applyBroadcastRules();
@@ -392,8 +539,9 @@
   // ---- 判決投票 ----
   function showVoting(votes) {
     document.getElementById("voting-closed-note").style.display = "none";
-    // 被告人は自分の裁判に投票できない
-    if (!hasVoted && myRole !== "defendant") {
+    // 傍聴席以外(被告人・検察官・弁護人)は自分の裁判に投票できない。
+    // ゲーム形式では、賭けた人も自分の得のために投票してしまえるので投票できない
+    if (!hasVoted && myRole === "gallery" && !hasBet) {
       document.getElementById("voting-buttons").style.display = "flex";
     }
     // ホストの「判決を確定する」ボタンは、ページ読み込み時点でまだ投票が
@@ -427,11 +575,21 @@
   function finalizeVerdict() {
     const btn = document.getElementById("finalize-verdict-button");
     if (btn) { btn.disabled = true; btn.textContent = "判決を言い渡し中…"; }
-    socket.emit("finalize_verdict", { name: myName });
+    // ゲーム形式は2審/3審に進まず、投票→賭け総額→運の順で必ずその場で確定する専用イベント
+    socket.emit(gameMode ? "finalize_verdict_game_mode" : "finalize_verdict", { name: myName });
   }
 
   socket.on("verdict_finalized", () => {
     window.location.href = "{% url 'verdict' %}";
+  });
+
+  // ゲーム形式: 判決確定と同時に計算されるランキングは、次の判決ページで参照できるよう
+  // sessionStorageに一旦置いておく(サーバー側でもlobby_state["ranking"]に保持済みなので、
+  // ページ読み込み直後の初期表示は結局サーバー側からも取れるが、こちらは念のための保険)
+  socket.on("ranking_computed", (data) => {
+    try {
+      sessionStorage.setItem("last_ranking", JSON.stringify(data.ranking || []));
+    } catch (err) { /* ストレージが使えなくても判決ページ側のサーバー描画で表示できる */ }
   });
 
   // ---- 5:5などの同数決着(引き分け) → 2審・3審への進行 ----

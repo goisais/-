@@ -52,12 +52,58 @@
       {% endif %}
     </div>
 
+    {% if game_mode %}
+    <!-- ゲーム形式: 役職者・傍聴席全員を同じ物差しでランキングした結果。
+         同スコアは同順位・同ボーナスポイント(1位10p/2位6p/3位3p/4位以下0p、永続) -->
+    <div class="section-pad" style="padding-bottom: 4px;">
+      <button type="button" id="show-ranking-button" class="btn-primary" style="width: 100%; border: none;" onclick="toggleRanking()">
+        <i class="ti ti-trophy"></i> 今回のランキングを見る
+      </button>
+    </div>
+    <div id="ranking-panel" style="display: none; margin: 0 16px 12px; background: rgba(250, 236, 231, 0.5); border-radius: 10px; padding: 10px 14px;">
+      {% for entry in ranking %}
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; {% if not forloop.last %}border-bottom: 1px solid rgba(90, 62, 40, 0.15);{% endif %}">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 13px; font-weight: 700; color: var(--wood-dark); min-width: 22px;">{{ entry.rank }}位</span>
+          <div>
+            <div style="font-size: 13px; font-weight: 500; color: var(--text-dark);">{{ entry.name }}{% if entry.name == my_name %}（自分）{% endif %}</div>
+            <div style="font-size: 10px; color: var(--text-brown-muted);">
+              {% if entry.role == "defendant" %}被告人{% elif entry.role == "prosecutor" %}検察官{% elif entry.role == "defense" %}弁護人{% else %}傍聴席{% endif %}
+              ・スコア{{ entry.score }}
+            </div>
+          </div>
+        </div>
+        <div style="font-size: 12px; font-weight: 600; color: {% if entry.bonus_points > 0 %}var(--gold){% else %}var(--text-brown-muted){% endif %};">
+          +{{ entry.bonus_points }}p
+        </div>
+      </div>
+      {% empty %}
+      <div style="font-size: 12px; color: var(--text-brown-muted); text-align: center;">ランキング情報がありません</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="section-pad">
       <a href="{% url 'index' %}" class="btn-primary" style="text-decoration: none;">トップに戻る</a>
     </div>
 
   </div>
 </div>
+
+{% if game_mode %}
+<script>
+  function toggleRanking() {
+    const panel = document.getElementById("ranking-panel");
+    const btn = document.getElementById("show-ranking-button");
+    if (!panel) return;
+    const showing = panel.style.display !== "none";
+    panel.style.display = showing ? "none" : "block";
+    if (btn) btn.innerHTML = showing
+      ? '<i class="ti ti-trophy"></i> 今回のランキングを見る'
+      : '<i class="ti ti-trophy"></i> ランキングを閉じる';
+  }
+</script>
+{% endif %}
 
 {% if outcome == "guilty" and face_capture %}
 <script>
