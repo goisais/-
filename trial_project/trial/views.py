@@ -138,6 +138,24 @@ def host_setup_start(request):
     case_name = (request.POST.get("case_name") or "裁判").strip()
     defendant = request.POST.get("defendant")
 
+    # 参加者が3人未満なら開始できない
+    if len(lobby_state["participants"]) < 3:
+        phases = []
+        for ph in DEFAULT_PHASES:
+            duration = lobby_state["phase_durations"][ph["key"]]
+            phases.append({**ph, "duration_display": format_mmss(duration)})
+
+        return render(
+            request,
+            "host_setup.html",
+            {
+                "participants": lobby_state["participants"],
+                "phases": phases,
+                "access_code": lobby_state["access_code"],
+                "error": "開廷するには3人以上の参加者が必要です。",
+            },
+        )
+
     if not defendant or defendant not in lobby_state["participants"]:
         return redirect("host_setup")
 
@@ -150,7 +168,7 @@ def host_setup_start(request):
     start_trial(case_name, defendant)
     notify_trial_started()
     start_phase_timer()
-    return redirect("trial")
+    return redirect("role_reveal")
 
 
 def host_setup_game(request):

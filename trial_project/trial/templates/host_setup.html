@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}言い訳裁判 - 開廷準備{% endblock %}
 {% block content %}
 <div class="phone-frame">
@@ -13,6 +14,12 @@
       </div>
       <div class="ornate-setup-sub">新しい裁判を開く。このコードを参加者に伝えてね</div>
     </div>
+
+    {% if error %}
+    <div class="ornate-error" style="margin: 10px 16px 0;">
+      {{ error }}
+    </div>
+    {% endif %}
 
     <form action="{% url 'host_setup_start' %}" method="post" id="setup-form">
       {% csrf_token %}
@@ -59,7 +66,7 @@
       </div>
 
       <div class="section-pad">
-        <button type="submit" class="btn-primary">
+        <button type="submit" class="btn-primary" id="start-button">
           <i class="ti ti-gavel" style="font-size: 17px;"></i>
           開廷する
         </button>
@@ -91,6 +98,7 @@
       container.appendChild(chip);
     });
     emptyNote.style.display = list.length ? "none" : "block";
+    updateStartButton(list);
   }
 
   function selectDefendant(chipEl) {
@@ -111,5 +119,25 @@
       alert("被告人を参加者の中から選んでください");
     }
   });
+
+  function updateStartButton(participants) {
+    const button = document.getElementById("start-button");
+
+      if (participants.length < 3) {
+        button.disabled = true;
+        button.textContent = "3人以上で開廷できます";
+      } else {
+        button.disabled = false;
+        button.innerHTML = `
+          <i class="ti ti-gavel" style="font-size:17px;"></i>
+          開廷する
+        `;
+      }
+    }
+  updateStartButton([
+    {% for p in participants %}
+      "{{ p }}",
+    {% endfor %}
+  ]);
 </script>
 {% endblock %}
