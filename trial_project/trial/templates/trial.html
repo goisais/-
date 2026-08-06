@@ -633,6 +633,36 @@
     spawnGiftClip(data.asset);
   });
 
+  // 複数のギフトが同時期に送られても完全に重ならないよう、あらかじめ用意した
+  // 何箇所かの表示位置を使い回す(空いている枠を探して割り当て、再生が終わったら
+  // その枠を解放する)。ただの±10pxのランダムずらしだと、ほぼ同じ場所に重なって
+  // 見えてしまっていたので、はっきり離れた位置に散らす方式に変更した
+  const GIFT_SLOTS = [
+    { right: "4%", bottom: "34%", rot: -4 },
+    { right: "32%", bottom: "48%", rot: 5 },
+    { right: "2%", bottom: "6%", rot: 3 },
+    { right: "34%", bottom: "10%", rot: -6 },
+    { right: "16%", bottom: "58%", rot: 2 },
+    { right: "48%", bottom: "26%", rot: -2 },
+  ];
+  const giftSlotOccupied = new Array(GIFT_SLOTS.length).fill(false);
+
+  function claimGiftSlot() {
+    for (let i = 0; i < GIFT_SLOTS.length; i++) {
+      if (!giftSlotOccupied[i]) {
+        giftSlotOccupied[i] = true;
+        return i;
+      }
+    }
+    return -1; // 枠が全部埋まっていたら諦めてランダム配置にフォールバックする
+  }
+
+  function releaseGiftSlot(slotIndex) {
+    if (slotIndex >= 0 && slotIndex < giftSlotOccupied.length) {
+      giftSlotOccupied[slotIndex] = false;
+    }
+  }
+
   function spawnGiftClip(assetFilename) {
     const idx = GIFT_ASSET_FILENAMES.indexOf(assetFilename);
     const url = idx >= 0 ? GIFT_ASSET_URLS[idx] : null;
@@ -641,10 +671,18 @@
 
     const wrapper = document.createElement("div");
     wrapper.className = "gift-clip";
-    // 複数同時に送られても、少しずつずらして重ねて表示する
-    const offsetX = Math.round(Math.random() * 20 - 10);
-    const offsetY = Math.round(Math.random() * 20 - 10);
-    wrapper.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+    const slotIndex = claimGiftSlot();
+    if (slotIndex >= 0) {
+      const slot = GIFT_SLOTS[slotIndex];
+      wrapper.style.right = slot.right;
+      wrapper.style.bottom = slot.bottom;
+      wrapper.style.transform = `rotate(${slot.rot}deg)`;
+    } else {
+      // 枠が全部埋まっている場合だけ、従来通り軽くランダムにずらす
+      const offsetX = Math.round(Math.random() * 30 - 15);
+      const offsetY = Math.round(Math.random() * 30 - 15);
+      wrapper.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+    }
 
     const video = document.createElement("video");
     video.src = url;
@@ -677,26 +715,38 @@
       }
     }
 
+    let removed = false;
+    function removeWrapperAndFreeSlot() {
+      if (removed) return;
+      removed = true;
+      wrapper.remove();
+      releaseGiftSlot(slotIndex);
+    }
+
     video.addEventListener("loadedmetadata", () => {
       video.play().then(() => requestAnimationFrame(drawFrame))
         .catch((err) => console.error("ギフト動画の再生に失敗しました", err));
     });
     video.addEventListener("ended", () => {
       if (rafId) cancelAnimationFrame(rafId);
-      setTimeout(() => wrapper.remove(), 200);
+      setTimeout(removeWrapperAndFreeSlot, 200);
     });
     // 万が一endedが発火しない環境向けの保険(素材はどれも数秒程度の想定)
-    setTimeout(() => wrapper.remove(), 8000);
+    setTimeout(removeWrapperAndFreeSlot, 8000);
   }
 
-  // 緑背景を1フレームずつ透明化する(動画自体にアルファは焼き込まず、都度ピクセル判定する)
+  // 緑背景を1フレームずつ透明化する(動画自体にアルファは焼き込まず、都度ピクセル判定する)。
+  // 判定を少し厳しめ(緑が赤・青の2倍以上)にすることで、被写体の縁に残りがちな
+  // 緑のフチをできるだけ減らしている。ただし被写体自体が緑色の衣装などの場合は、
+  // 背景と被写体の緑を区別できず、そこだけ透明になってしまう(色だけで背景を
+  // 判定する方式そのものの限界。背景色と被写体の色が重なるとどうしても起きる)
   function chromaKeyFrame(ctx, w, h) {
     try {
       const imageData = ctx.getImageData(0, 0, w, h);
       const d = imageData.data;
       for (let i = 0; i < d.length; i += 4) {
         const r = d[i], g = d[i + 1], b = d[i + 2];
-        if (g > 90 && g > r * 1.15 && g > b * 1.15) {
+        if (g > 90 && g > r * 2.0 && g > b * 2.0) {
           d[i + 3] = 0;
         }
       }

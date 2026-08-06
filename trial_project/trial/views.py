@@ -178,7 +178,10 @@ def host_setup_game_start(request):
     start_trial_game_mode(defendant, case_template)
     notify_trial_started()
     start_phase_timer()
-    return redirect("trial")
+    # ホストも参加者と同じ役割発表画面(15秒確認→カウントダウン→全員同時入廷)を
+    # 経由させる。以前はここで直接/trialへ飛ばしていたため、ホストだけ役割発表を
+    # 見られず、しかも他の参加者より先にひとりだけ法廷画面に入ってしまっていた
+    return redirect("role_reveal")
 
 
 def join_waiting(request):
