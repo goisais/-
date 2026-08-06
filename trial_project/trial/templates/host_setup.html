@@ -2,20 +2,16 @@
 {% block title %}言い訳裁判 - 開廷準備{% endblock %}
 {% block content %}
 <div class="phone-frame">
-  <div class="screen">
+  <div class="screen ornate-theme">
 
-    <div class="screen-header">
-      <div class="title-row">
-        <div class="brand">
-          <i class="ti ti-gavel"></i>
-          <span>開廷準備</span>
-        </div>
-        <div style="display: flex; flex-direction: column; align-items: flex-end;">
-          <span style="font-size: 9px; color: var(--text-cream-muted); letter-spacing: 1px;">主催コード</span>
-          <span style="font-size: 18px; font-weight: 500; color: var(--gold); letter-spacing: 3px; font-family: var(--font-voice, monospace);">{{ access_code }}</span>
-        </div>
+    <div class="ornate-setup-header">
+      <div class="ornate-setup-icon"><i class="ti ti-gavel"></i></div>
+      <div class="ornate-setup-title">開廷準備</div>
+      <div class="ornate-setup-code">
+        <span class="code-label">主催コード</span>
+        <span class="code-value">{{ access_code }}</span>
       </div>
-      <div style="font-size: 10px; letter-spacing: 1px; color: var(--text-cream-muted); margin-top: 3px;">新しい裁判を開く。このコードを参加者に伝えてね</div>
+      <div class="ornate-setup-sub">新しい裁判を開く。このコードを参加者に伝えてね</div>
     </div>
 
     <form action="{% url 'host_setup_start' %}" method="post" id="setup-form">

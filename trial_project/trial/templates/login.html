@@ -1,13 +1,14 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}言い訳裁判 - ログイン{% endblock %}
 {% block content %}
-<div class="phone-frame">
-  <div class="screen">
+<div class="phone-frame login-page">
+  <div class="screen ornate-theme">
 
-    <div style="padding: 28px 20px 10px; text-align: center;">
-      <i class="ti ti-gavel" style="font-size: 32px; color: var(--gold);"></i>
-      <div style="font-size: 18px; font-weight: 500; color: var(--cream); margin-top: 8px;">言い訳裁判</div>
-      <div style="font-size: 11px; color: var(--text-cream-muted); margin-top: 4px;">くだらないほど盛り上がる、模擬裁判エンタメ</div>
+    <div class="ornate-logo-block">
+      <img src="{% static 'trial/img/logo.png' %}" alt="言い訳裁判" />
+      <div class="ornate-tagline"><i class="ti ti-sparkles"></i> 判決の時間です <i class="ti ti-sparkles"></i></div>
+      <div class="ornate-sub">くだらないほど盛り上がる、模擬裁判エンタメ</div>
     </div>
 
     <!-- お名前は共通の入力欄を1つだけ持たせて、送信するフォーム(自由形式ホスト/
@@ -18,7 +19,7 @@
     </div>
 
     {% if error %}
-    <div style="margin: 0 16px; background: rgba(214, 69, 69, 0.15); border: 1px solid var(--danger); border-radius: 6px; padding: 8px 12px; font-size: 12px; color: var(--danger);">
+    <div class="ornate-error">
       {{ error }}
     </div>
     {% endif %}
@@ -33,13 +34,13 @@
         <input type="hidden" name="player_token" class="player-token-input" value="" />
         <input type="hidden" name="role" value="host" />
         <input type="hidden" name="mode" value="classic" />
-        <button type="submit" class="option-card host">
-          <div class="icon-circle" style="background: var(--danger);">
-            <i class="ti ti-gavel" style="font-size: 19px; color: var(--on-danger);"></i>
+        <button type="submit" class="ornate-card mode-classic">
+          <div class="icon-circle tone-red">
+            <i class="ti ti-gavel"></i>
           </div>
           <div>
-            <div style="font-size: 14px; font-weight: 500; color: var(--text-dark);">自由形式で開廷する</div>
-            <div style="font-size: 11px; color: var(--text-brown-muted); margin-top: 2px;">被告人・制限時間を自分で決める、いつもの裁判</div>
+            <div class="ornate-card-title">自由形式で開廷する</div>
+            <div class="ornate-card-desc">被告人・制限時間を自分で決める、いつもの裁判</div>
           </div>
         </button>
       </form>
@@ -51,13 +52,13 @@
         <input type="hidden" name="player_token" class="player-token-input" value="" />
         <input type="hidden" name="role" value="host" />
         <input type="hidden" name="mode" value="game" />
-        <button type="submit" class="option-card host" style="border-color: var(--gold); background: var(--cream);">
-          <div class="icon-circle" style="background: var(--gold);">
-            <i class="ti ti-dice-6" style="font-size: 19px; color: var(--wood-dark);"></i>
+        <button type="submit" class="ornate-card mode-game">
+          <div class="icon-circle tone-gold">
+            <i class="ti ti-dice-6"></i>
           </div>
           <div>
-            <div style="font-size: 14px; font-weight: 500; color: var(--text-dark);">ゲーム形式で開廷する</div>
-            <div style="font-size: 11px; color: var(--text-brown-muted); margin-top: 2px;">お題・被告人はランダム抽選。ベット＆ランキングあり</div>
+            <div class="ornate-card-title">ゲーム形式で開廷する</div>
+            <div class="ornate-card-desc">お題・被告人はランダム抽選。ベット＆ランキングあり</div>
           </div>
         </button>
       </form>
@@ -68,17 +69,18 @@
         <input type="hidden" name="username" class="username-mirror" value="" />
         <input type="hidden" name="player_token" class="player-token-input" value="" />
         <input type="hidden" name="role" value="participant" />
-        <div class="option-card guest" style="cursor: default;">
-          <div class="icon-circle" style="background: var(--bronze);">
-            <i class="ti ti-door-enter" style="font-size: 19px; color: var(--cream);"></i>
+        <div class="ornate-card mode-guest">
+          <div class="ornate-card-row">
+            <div class="icon-circle tone-bronze">
+              <i class="ti ti-door-enter"></i>
+            </div>
+            <div class="ornate-card-body">
+              <div class="ornate-card-title">参加者として参加する</div>
+              <div class="ornate-card-desc">ホストから聞いた招待コードを入れてね</div>
+            </div>
           </div>
-          <div style="flex: 1;">
-            <div style="font-size: 14px; font-weight: 500; color: var(--cream);">参加者として参加する</div>
-            <div style="font-size: 11px; color: var(--text-cream-muted); margin: 2px 0 8px;">ホストから聞いた招待コードを入れてね</div>
-            <input type="text" name="access_code" placeholder="招待コード（例：1234）" maxlength="4"
-                   style="width: 100%; background: var(--cream); border: 1px solid var(--wood-dark); border-radius: 6px; padding: 7px 10px; font-size: 13px; color: var(--text-dark); box-sizing: border-box;" />
-            <button type="submit" class="btn-primary" style="margin-top: 8px; padding: 8px;">参加する</button>
-          </div>
+          <input type="text" name="access_code" placeholder="招待コード（例：1234）" maxlength="4" />
+          <button type="submit" class="btn-primary" style="margin-top: 8px; padding: 8px;">参加する</button>
         </div>
       </form>
     </div>

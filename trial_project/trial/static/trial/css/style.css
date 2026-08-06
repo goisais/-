@@ -47,7 +47,7 @@ body {
 }
 
 .phone-frame {
-  background: linear-gradient(155deg, #ff6fa8 0%, #ff9a3d 48%, #ffd23f 100%);
+  background: linear-gradient(135deg, #eaf8ff 0%, #a9deff 14%, #4fb3e8 28%, #1f7fc4 40%, #cdeeff 52%, #3a94d1 66%, #eaf8ff 80%, #2670a3 100%);
   border-radius: var(--radius-lg);
   padding: 12px;
   max-width: 400px;
@@ -56,7 +56,7 @@ body {
   max-height: 720px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 12px 28px rgba(74, 27, 12, 0.35), 0 0 0 3px rgba(255, 255, 255, 0.55) inset;
+  box-shadow: 0 12px 28px rgba(10, 40, 65, 0.45), 0 0 0 3px rgba(255, 255, 255, 0.65) inset;
 }
 
 .screen {
@@ -1227,4 +1227,420 @@ body {
 
 .preset-comment-btn:active {
   background: var(--gold);
+}
+
+/* ============================================================
+   法廷劇場テーマ（ログイン / 開廷準備）
+   ゲーム形式追加前に作った既存デザインの更新版。
+   .ornate-theme は login.html / host_setup.html / host_setup_game.html の
+   .screen にだけ付与し、他画面(trial/verdict/role_reveal/waiting_room)で
+   共有している .screen-header 等のベースクラスには一切手を加えず、
+   子孫セレクタでこのテーマ内だけ見た目を変える。
+   ============================================================ */
+:root {
+  --ornate-bg-1: #33150a;
+  --ornate-bg-2: #170a04;
+  --ornate-bg-3: #0a0402;
+  --ornate-red: #7c1420;
+  --ornate-red-light: #a51f2b;
+  --ornate-gold: #d4a017;
+  --ornate-gold-bright: #ffd76a;
+  --ornate-gold-deep: #8a5a12;
+  --ornate-text: #f7e4c8;
+  --ornate-text-muted: #c9a679;
+}
+
+.ornate-theme {
+  background:
+    radial-gradient(ellipse 140% 55% at 50% -10%, rgba(255, 215, 106, 0.16) 0%, transparent 60%),
+    linear-gradient(180deg, var(--ornate-bg-1) 0%, var(--ornate-bg-2) 55%, var(--ornate-bg-3) 100%);
+}
+
+.ornate-theme::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(255, 215, 106, 0.28);
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ornate-theme > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ロゴブロック（ログイン画面） パチンコ・スロット台っぽい電飾演出つき */
+.ornate-logo-block {
+  position: relative;
+  text-align: center;
+  padding: 34px 20px 8px;
+  overflow: visible;
+}
+
+.ornate-logo-block::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 14px;
+  right: 14px;
+  height: 6px;
+  background-image: repeating-linear-gradient(90deg, var(--ornate-gold-bright) 0 6px, transparent 6px 16px);
+  border-radius: 3px;
+  animation: pachinko-lights 1.1s steps(2) infinite;
+}
+
+.ornate-logo-block::after {
+  content: "";
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  width: 280px;
+  height: 280px;
+  transform: translateX(-50%);
+  background: repeating-conic-gradient(from 0deg, rgba(255, 215, 106, 0.16) 0deg 6deg, transparent 6deg 18deg);
+  border-radius: 50%;
+  z-index: -1;
+  animation: starburst-spin 22s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes pachinko-lights {
+  0%, 100% { filter: brightness(1); opacity: 0.75; }
+  50% { filter: brightness(1.7); opacity: 1; }
+}
+
+@keyframes starburst-spin {
+  to { transform: translateX(-50%) rotate(360deg); }
+}
+
+.ornate-logo-block img {
+  position: relative;
+  width: 172px;
+  max-width: 70%;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.6));
+}
+
+.ornate-tagline {
+  position: relative;
+  display: inline-block;
+  margin-top: 12px;
+  padding: 5px 20px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 4px;
+  color: var(--ornate-gold-bright);
+  border-top: 1px solid rgba(255, 215, 106, 0.5);
+  border-bottom: 1px solid rgba(255, 215, 106, 0.5);
+  animation: tagline-glow 1.8s ease-in-out infinite;
+}
+
+.ornate-tagline i {
+  font-size: 10px;
+  vertical-align: 1px;
+  opacity: 0.85;
+}
+
+@keyframes tagline-glow {
+  0%, 100% { text-shadow: 0 0 6px rgba(255, 215, 106, 0.7), 0 0 14px rgba(255, 215, 106, 0.35); }
+  50% { text-shadow: 0 0 14px rgba(255, 215, 106, 1), 0 0 26px rgba(255, 215, 106, 0.7); }
+}
+
+.ornate-sub {
+  margin-top: 10px;
+  font-size: 10.5px;
+  color: var(--ornate-text-muted);
+  letter-spacing: 0.5px;
+}
+
+/* 開廷準備 系: 独自ヘッダー（.screen-headerは使わない） */
+.ornate-setup-header {
+  text-align: center;
+  padding: 22px 16px 14px;
+  border-bottom: 1px solid rgba(255, 215, 106, 0.3);
+  background: linear-gradient(180deg, rgba(255, 215, 106, 0.08), transparent);
+}
+
+.ornate-setup-icon {
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 35% 30%, var(--ornate-gold-bright), var(--ornate-gold-deep));
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(0, 0, 0, 0.35);
+  font-size: 20px;
+  color: #3a1505;
+}
+
+.ornate-setup-title {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--ornate-gold-bright);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.ornate-setup-code {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ornate-setup-code .code-label {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--ornate-text-muted);
+}
+
+.ornate-setup-code .code-value {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  color: var(--ornate-gold-bright);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--ornate-gold-deep);
+  border-radius: 6px;
+  padding: 3px 10px;
+}
+
+.ornate-setup-sub {
+  margin-top: 8px;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--ornate-text-muted);
+  line-height: 1.5;
+}
+
+/* フィールド・入力欄（ログイン画面は中央揃え） */
+.ornate-theme .field label {
+  color: var(--ornate-gold);
+  letter-spacing: 2px;
+}
+
+.ornate-theme .field input[type="text"] {
+  background: #241109;
+  border: 1px solid var(--ornate-gold-deep);
+  color: var(--ornate-text);
+}
+
+.login-page .ornate-theme .field {
+  text-align: center;
+}
+
+.login-page .ornate-theme .field label {
+  text-align: center;
+}
+
+.login-page .ornate-theme .field input[type="text"] {
+  max-width: 240px;
+  margin: 0 auto;
+  display: block;
+  text-align: center;
+}
+
+.ornate-theme .field input[type="text"]::placeholder {
+  color: #8a6a49;
+}
+
+.ornate-theme .helper-text {
+  color: var(--ornate-text-muted);
+}
+
+/* チップ（参加者一覧・被告人選択） */
+.ornate-theme .chip {
+  background: rgba(255, 215, 106, 0.12);
+  border: 1px solid rgba(255, 215, 106, 0.3);
+  color: var(--ornate-text);
+}
+
+.ornate-theme .chip.chip-muted {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 215, 106, 0.15);
+  color: var(--ornate-text-muted);
+}
+
+.ornate-theme .chip.chip-selected {
+  background: rgba(255, 215, 106, 0.18);
+  border: 2px solid var(--ornate-gold-bright);
+  box-shadow: 0 0 8px rgba(255, 215, 106, 0.35);
+  color: var(--ornate-text);
+  padding: 4px 10px 4px 4px;
+}
+
+/* フェーズ時間設定 */
+.ornate-theme .time-setting-row {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 215, 106, 0.18);
+}
+
+.ornate-theme .time-setting-row .setting-label {
+  color: var(--ornate-text);
+}
+
+.ornate-theme .time-setting-row .stepper button {
+  border: 1px solid var(--ornate-gold-deep);
+  color: var(--ornate-gold-bright);
+}
+
+.ornate-theme .time-setting-row .stepper .value {
+  color: var(--ornate-text);
+}
+
+.ornate-theme .time-setting-row .setting-label i {
+  color: var(--ornate-gold-bright) !important;
+}
+
+.ornate-theme #participant-count {
+  color: var(--ornate-text-muted) !important;
+}
+
+/* お知らせボックス */
+.ornate-theme .field > div[style*="background"] {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255, 215, 106, 0.18);
+  color: var(--ornate-text-muted) !important;
+}
+
+/* メインボタン */
+.ornate-theme .btn-primary {
+  background: linear-gradient(160deg, var(--ornate-red-light), var(--ornate-red));
+  border: 2px solid var(--ornate-gold-bright);
+  color: var(--ornate-text);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  letter-spacing: 1px;
+}
+
+.ornate-theme .btn-primary:disabled {
+  opacity: 0.45;
+}
+
+/* 開廷方法カード（ログイン画面） */
+.ornate-card {
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ornate-card.mode-classic,
+.ornate-card.mode-game {
+  flex-direction: column;
+  text-align: center;
+  gap: 6px;
+}
+
+.ornate-card.mode-classic {
+  background: linear-gradient(160deg, #4a1015, #2c0a0d);
+  border: 1.5px solid var(--ornate-gold);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), 0 0 8px rgba(255, 215, 106, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  animation: neon-pulse 2.2s ease-in-out infinite;
+}
+
+.ornate-card.mode-game {
+  background: linear-gradient(160deg, #3a2308, #241505);
+  border: 1.5px solid var(--ornate-gold-bright);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), 0 0 8px rgba(255, 215, 106, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  animation: neon-pulse 2.2s ease-in-out infinite;
+  animation-delay: 0.6s;
+}
+
+@keyframes neon-pulse {
+  0%, 100% { box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), 0 0 8px rgba(255, 215, 106, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+  50% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 215, 106, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+}
+
+.ornate-card.mode-guest {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 215, 106, 0.3);
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.ornate-card .icon-circle {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.ornate-card .icon-circle.tone-red {
+  background: radial-gradient(circle at 35% 30%, #e2626c, var(--ornate-red));
+}
+
+.ornate-card .icon-circle.tone-gold {
+  background: radial-gradient(circle at 35% 30%, var(--ornate-gold-bright), var(--ornate-gold-deep));
+}
+
+.ornate-card .icon-circle.tone-bronze {
+  background: radial-gradient(circle at 35% 30%, #c99a5b, #6e4318);
+}
+
+.ornate-card .icon-circle i {
+  font-size: 19px;
+  color: #2a0d0d;
+}
+
+.ornate-card.mode-game .icon-circle i,
+.ornate-card.mode-classic .icon-circle i {
+  color: #fff;
+}
+
+.ornate-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ornate-text);
+}
+
+.ornate-card-desc {
+  font-size: 11px;
+  color: var(--ornate-text-muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.ornate-card.mode-guest .ornate-card-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ornate-card.mode-guest .ornate-card-body {
+  flex: 1;
+}
+
+.ornate-card.mode-guest input[type="text"] {
+  width: 100%;
+  background: #241109;
+  border: 1px solid var(--ornate-gold-deep);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--ornate-text);
+  box-sizing: border-box;
+  margin-top: 8px;
+}
+
+.ornate-card.mode-guest input[type="text"]::placeholder {
+  color: #8a6a49;
+}
+
+.ornate-error {
+  margin: 0 16px;
+  background: rgba(214, 69, 69, 0.18);
+  border: 1px solid var(--ornate-red-light);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #ffb3b3;
 }
