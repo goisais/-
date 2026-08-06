@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}言い訳裁判 - 開廷準備{% endblock %}
 {% block content %}
 <div class="phone-frame">
@@ -10,6 +11,24 @@
       <div class="ornate-setup-code">
         <span class="code-label">主催コード</span>
         <span class="code-value">{{ access_code }}</span>
+    <div class="screen-header">
+      <div class="title-row">
+        <div class="brand">
+          <i class="ti ti-gavel"></i>
+          <img
+            src="{% static 'trial/img/kaiteijunbi1.png' %}"
+            alt="開廷準備"
+            style="
+              height: 28px;
+              width: auto;
+              display: block;
+            "
+          >
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+          <span style="font-size: 9px; color: var(--text-cream-muted); letter-spacing: 1px;">主催コード</span>
+          <span style="font-size: 18px; font-weight: 500; color: var(--gold); letter-spacing: 3px; font-family: var(--font-voice, monospace);">{{ access_code }}</span>
+        </div>
       </div>
       <div class="ornate-setup-sub">新しい裁判を開く。このコードを参加者に伝えてね</div>
     </div>
@@ -59,7 +78,7 @@
       </div>
 
       <div class="section-pad">
-        <button type="submit" class="btn-primary">
+        <button type="submit" class="btn-primary" id="start-button">
           <i class="ti ti-gavel" style="font-size: 17px;"></i>
           開廷する
         </button>
@@ -91,6 +110,7 @@
       container.appendChild(chip);
     });
     emptyNote.style.display = list.length ? "none" : "block";
+    updateStartButton(list);
   }
 
   function selectDefendant(chipEl) {
@@ -111,5 +131,25 @@
       alert("被告人を参加者の中から選んでください");
     }
   });
+
+  function updateStartButton(participants) {
+    const button = document.getElementById("start-button");
+
+      if (participants.length < 3) {
+        button.disabled = true;
+        button.textContent = "3人以上で開廷できます";
+      } else {
+        button.disabled = false;
+        button.innerHTML = `
+          <i class="ti ti-gavel" style="font-size:17px;"></i>
+          開廷する
+        `;
+      }
+    }
+  updateStartButton([
+    {% for p in participants %}
+      "{{ p }}",
+    {% endfor %}
+  ]);
 </script>
 {% endblock %}
