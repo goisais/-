@@ -27,6 +27,11 @@
   box-sizing: border-box;
 }
 
+html, body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
@@ -34,23 +39,36 @@ body {
   color: var(--text-dark);
   display: flex;
   justify-content: center;
-  padding: 24px 12px;
+  align-items: center;
+  padding: 10px;
+  height: 100vh;
+  height: 100dvh; /* モバイルSafariのアドレスバー分を差し引いた実際の表示高さ */
+  overflow: hidden; /* ページ自体はスクロールさせず、中身はscreen側で内部スクロールする */
 }
 
 .phone-frame {
-  background: var(--wood-light);
+  background: linear-gradient(155deg, #ff6fa8 0%, #ff9a3d 48%, #ffd23f 100%);
   border-radius: var(--radius-lg);
-  padding: 16px;
+  padding: 12px;
   max-width: 400px;
   width: 100%;
+  height: 100%;
+  max-height: 720px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 28px rgba(74, 27, 12, 0.35), 0 0 0 3px rgba(255, 255, 255, 0.55) inset;
 }
 
 .screen {
   position: relative;
   background: var(--wood-mid);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--wood-dark);
+  flex: 1;
+  min-height: 0; /* flexの子要素を内部スクロールさせるためのおまじない */
 }
 
 /* 異議ありスタンプ: 画面左側を下から上に流れて、上のほうでフェードアウトする */
@@ -111,53 +129,108 @@ body {
   }
 }
 
-/* ゲーム形式: 異議ありカード使用時の全画面フラッシュ演出(スタンプよりずっと派手にする) */
+/* ゲーム形式: 異議ありカード使用時の全画面演出(ゲームの必殺技風、ロゴ画像を使う)。
+   使用中は消えずに表示され続け、進行状況(効果の残り時間)をプログレスバーで見せ、
+   残り5秒からは大きなカウントダウン数字に切り替わる */
 .objection-card-flash-layer {
   position: absolute;
   inset: 0;
-  z-index: 90;
+  z-index: 95;
   pointer-events: none;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  text-align: center;
 }
 
 .objection-card-flash {
   position: absolute;
   inset: 0;
-  background: rgba(20, 8, 4, 0.6);
-  animation: card-flash-bg 0.9s ease-out forwards;
+  background: radial-gradient(circle, rgba(255, 210, 63, 0.35) 0%, rgba(20, 8, 4, 0.8) 78%);
+  animation: card-flash-bg 0.6s ease-out forwards;
 }
 
-.objection-card-banner {
+.objection-card-logo {
   position: relative;
-  background: var(--danger);
-  color: var(--on-danger);
-  border: 3px solid var(--cream);
-  border-radius: 12px;
-  padding: 14px 20px;
-  font-size: 16px;
-  font-weight: 800;
-  line-height: 1.5;
-  text-align: center;
-  max-width: 80%;
-  transform: scale(0.4) rotate(-6deg);
+  width: 84%;
+  max-width: 260px;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.65));
+  transform: scale(0.3) rotate(-10deg);
   opacity: 0;
-  animation: card-banner-pop 1.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: card-logo-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.objection-card-caption {
+  position: relative;
+  margin-top: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 20px;
+  max-width: 82%;
+  opacity: 0;
+  animation: card-caption-in 0.4s ease-out 0.3s forwards;
+}
+
+.objection-card-progress-wrap {
+  position: relative;
+  width: 68%;
+  max-width: 220px;
+  margin-top: 12px;
+  height: 9px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  overflow: hidden;
+  opacity: 0;
+  animation: card-caption-in 0.4s ease-out 0.45s forwards;
+}
+
+.objection-card-progress-bar {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--danger));
+  transform-origin: left center;
+}
+
+.objection-card-countdown {
+  position: relative;
+  margin-top: 10px;
+  font-size: 56px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 0 0 16px var(--danger), 0 4px 10px rgba(0, 0, 0, 0.7);
+  display: none;
+}
+
+.objection-card-countdown.pulse {
+  animation: countdown-pulse 0.9s ease-out;
 }
 
 @keyframes card-flash-bg {
   0% { opacity: 0; }
-  12% { opacity: 1; }
-  100% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
-@keyframes card-banner-pop {
-  0% { transform: scale(0.4) rotate(-6deg); opacity: 0; }
-  18% { transform: scale(1.15) rotate(2deg); opacity: 1; }
-  30% { transform: scale(1) rotate(0deg); opacity: 1; }
-  82% { transform: scale(1) rotate(0deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0deg); opacity: 0; }
+@keyframes card-logo-pop {
+  0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+  55% { transform: scale(1.18) rotate(3deg); opacity: 1; }
+  75% { transform: scale(0.96) rotate(-1deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes card-caption-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes countdown-pulse {
+  0% { transform: scale(1.5); opacity: 0.2; }
+  40% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 /* ヘッダー共通 */
@@ -426,6 +499,37 @@ body {
   border: 1px solid #2c1508;
 }
 
+/* videoを他の重なり要素(placeholder/タグ/コメント弾幕/ギフト/役職表示など)と同じ
+   絶対配置のスタッキング順に乗せることで、z-indexが期待通りに効くようにする。
+   これが無いと特にSafariで<video>だけが独立した合成レイヤーとして扱われ、
+   z-indexを無視して常に最前面に描画されてしまい、上に重ねた演出が全部隠れる */
+.evidence-video video {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* ニコニコ動画風のコメント弾幕レイヤー: 配信映像の上を右から左に流れていく */
+.comment-fly-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 41;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+.fly-comment {
+  position: absolute;
+  white-space: nowrap;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7), 0 0 6px rgba(0, 0, 0, 0.5);
+  will-change: transform;
+}
+
 .evidence-video .placeholder {
   position: absolute;
   inset: 0;
@@ -485,26 +589,38 @@ body {
 }
 
 .speaker-indicator-inner {
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 16px;
-  padding: 10px 20px;
+  padding: 10px 22px;
   transform: rotate(-3deg);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+}
+
+/* 役職ごとに縁取りの色を変えて、誰が話しているか一瞬で見分けられるようにする */
+.speaker-indicator-overlay.role-prosecutor .speaker-indicator-inner {
+  border-color: rgba(214, 69, 69, 0.85);
+}
+.speaker-indicator-overlay.role-defense .speaker-indicator-inner {
+  border-color: rgba(24, 95, 165, 0.85);
+}
+.speaker-indicator-overlay.role-defendant .speaker-indicator-inner {
+  border-color: rgba(239, 159, 39, 0.85);
 }
 
 .speaker-indicator-role {
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 800;
   letter-spacing: 5px;
-  color: rgba(255, 255, 255, 0.55);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
 }
 
 .speaker-indicator-name {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   margin-top: 3px;
-  color: rgba(255, 255, 255, 0.7);
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
 }
 
 /* ゲーム形式: 投げ銭(妨害ギフト)の再生層。被告人の顔付近(枠の右下寄り)に重ねて表示する。
@@ -916,4 +1032,193 @@ body {
   text-align: center;
   font-size: 11px;
   color: var(--text-cream-muted);
+}
+
+/* ---- 自分の役割バッジ(開廷中、常に目立つ場所に表示する) ---- */
+.my-role-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 12px 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 2px solid var(--gold);
+}
+
+.my-role-banner .icon-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 15px;
+  color: #fff;
+}
+
+.my-role-banner .icon-circle.accent-danger { background: var(--danger); }
+.my-role-banner .icon-circle.accent-accent { background: var(--accent-blue); }
+
+.my-role-banner .label {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--text-cream-muted);
+}
+
+.my-role-banner .value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cream);
+}
+
+/* ---- ゲーム形式: お題詳細ボックス(罪状・言い分) ---- */
+.case-info-box {
+  margin: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(239, 159, 39, 0.4);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.case-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(90deg, var(--wood-dark), #6a2a11);
+  border-bottom: 1px solid rgba(239, 159, 39, 0.4);
+}
+
+.case-info-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.case-info-difficulty {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--wood-dark);
+  background: var(--gold);
+  border-radius: 20px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+.case-info-body {
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-cream-muted);
+}
+
+.case-info-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.case-info-row + .case-info-row {
+  margin-top: 5px;
+}
+
+.case-info-tag {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  margin-top: 1px;
+}
+
+.case-info-tag.charge {
+  background: rgba(214, 69, 69, 0.85);
+  color: #fff;
+}
+
+.case-info-tag.claim {
+  background: rgba(24, 95, 165, 0.85);
+  color: #fff;
+}
+
+.case-info-text {
+  color: var(--cream);
+}
+
+/* ---- ゲーム形式: 投げ銭ギフトの写真サムネイル選択ボタン ---- */
+.gift-pick-btn {
+  background: var(--cream);
+  border: 2px solid var(--wood-dark);
+  border-radius: 10px;
+  padding: 3px;
+  width: 54px;
+  height: 54px;
+  overflow: hidden;
+  position: relative;
+}
+
+.gift-pick-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+}
+
+.gift-pick-btn:active {
+  border-color: var(--gold);
+}
+
+/* ---- ゲーム形式: 定番コメントのポップアップ選択 ----
+   .comment-input-row button の丸い赤ボタン共通スタイルに負けないよう、
+   あえて詳細度を上げた.comment-input-row button.preset-comment-toggleで上書きする */
+.comment-input-row button.preset-comment-toggle {
+  flex-shrink: 0;
+  background: var(--cream);
+  border: 1px solid var(--wood-dark);
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dark);
+  font-size: 15px;
+}
+
+.comment-input-row button.preset-comment-toggle.active {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.preset-comment-popup {
+  display: none;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border-top: 1px solid rgba(239, 159, 39, 0.3);
+  border-bottom: 1px solid rgba(239, 159, 39, 0.3);
+}
+
+.preset-comment-popup.open {
+  display: flex;
+}
+
+.preset-comment-btn {
+  background: var(--cream);
+  border: 1px solid var(--wood-dark);
+  border-radius: 12px;
+  padding: 4px 9px;
+  font-size: 10px;
+  color: var(--text-dark);
+  white-space: nowrap;
+}
+
+.preset-comment-btn:active {
+  background: var(--gold);
 }

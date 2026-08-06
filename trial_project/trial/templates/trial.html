@@ -21,10 +21,21 @@
       </div>
       <div class="subtitle">{{ case_name }}</div>
       <!-- 同じブラウザの複数タブでテストすると、セッションが共有されて役割が混ざるので、
-           今どの名前・役割でログイン中かここで確認できるようにしている -->
-      <div class="subtitle" id="login-indicator" style="color: var(--gold);">ログイン中: {{ my_name }}（{{ my_role }}）{% if is_host %} ・ホスト{% endif %}</div>
+           今どの名前・役割でログイン中かここで確認できるようにしている(小さい文字の方) -->
+      <div class="subtitle" id="login-indicator" style="color: var(--gold);">ログイン中: {{ my_name }}{% if is_host %} ・ホスト{% endif %}</div>
       <!-- 5:5同数で2審・3審に進んだ場合だけ表示する審級インジケーター -->
       <div class="subtitle" id="round-indicator" style="color: var(--danger); font-weight: 600; display: {% if trial_round > 1 %}block{% else %}none{% endif %};">{% if trial_round > 1 %}第{{ trial_round }}審{% endif %}</div>
+    </div>
+
+    <!-- 自分の役割を見失わないよう、開廷中ずっと目立つバッジとして表示しておく -->
+    <div class="my-role-banner" id="my-role-banner">
+      <div class="icon-circle accent-{{ role_meta.accent|default:'accent' }}" id="my-role-icon">
+        <i class="ti {{ role_meta.icon|default:'ti-users' }}"></i>
+      </div>
+      <div>
+        <div class="label">あなたの役割</div>
+        <div class="value" id="my-role-label">{{ role_meta.label|default:"傍聴席" }}</div>
+      </div>
     </div>
 
     <!-- フェーズタイマー: サーバーが1秒ごとに進行させ、全員の画面に同じ残り時間を配信している -->
@@ -68,6 +79,9 @@
 
         <div class="tag-defendant">被告人：{{ defendant_name }}</div>
         <div class="tag-evidence" id="speaking-tag" style="display: none;">発言中</div>
+
+        <!-- ニコニコ動画風、コメントが右から左に流れていく演出用のレイヤー(自由形式・ゲーム形式共通) -->
+        <div class="comment-fly-layer" id="comment-fly-layer"></div>
 
         {% if game_mode %}
         <!-- ゲーム形式: 検察質問/弁護士弁護のフェーズ中だけ、大きく半透明の役職名を
@@ -121,14 +135,20 @@
 
     {% if game_mode and case_template %}
     <!-- ゲーム形式: お題の詳細を法廷画面でもいつでも確認できるようにしておく -->
-    <div class="field" style="padding-top: 0;">
-      <div style="background: rgba(250, 236, 231, 0.5); border-radius: 10px; padding: 10px 12px; font-size: 11px; color: var(--text-brown-muted); line-height: 1.6;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
-          <span style="font-size: 12px; font-weight: 600; color: var(--wood-dark);">{{ case_template.title }}</span>
-          <span style="font-size: 9px; border: 1px solid var(--wood-dark); color: var(--wood-dark); border-radius: 4px; padding: 1px 6px;">難易度：{{ case_template.difficulty|default:"" }}</span>
+    <div class="case-info-box">
+      <div class="case-info-header">
+        <span class="case-info-title">{{ case_template.title }}</span>
+        <span class="case-info-difficulty">難易度：{{ difficulty_label }}</span>
+      </div>
+      <div class="case-info-body">
+        <div class="case-info-row">
+          <span class="case-info-tag charge">罪状</span>
+          <span class="case-info-text">{{ case_template.charge }}</span>
         </div>
-        <div><strong>罪状：</strong>{{ case_template.charge }}</div>
-        <div style="margin-top: 3px;"><strong>被告人の言い分：</strong>{{ case_template.claim }}</div>
+        <div class="case-info-row">
+          <span class="case-info-tag claim">言い分</span>
+          <span class="case-info-text">{{ case_template.claim }}</span>
+        </div>
       </div>
     </div>
     {% endif %}
@@ -166,23 +186,13 @@
     <div class="verdict-box" id="gift-box" style="margin-top: 10px;">
       <div class="verdict-title">妨害ギフトを送る<span style="font-size: 11px; font-weight: 400;">（1回{{ gift_cost }}p）</span></div>
       <div class="gift-picker-row" id="gift-picker-row" style="display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 6px;">
-        {% for i in gift_range %}
-        <button type="button" class="gift-pick-btn" onclick="sendGift({{ i }})">🎁{{ forloop.counter }}</button>
+        {% for i, thumb in gift_options %}
+        <button type="button" class="gift-pick-btn" onclick="sendGift({{ i }})" title="妨害ギフト{{ forloop.counter }}">
+          <img src="{% static thumb %}" alt="ギフト{{ forloop.counter }}" loading="lazy" />
+        </button>
         {% endfor %}
       </div>
       <div id="gift-result-note" style="text-align: center; font-size: 11px; margin-top: 6px;"></div>
-      <style>
-        .gift-pick-btn {
-          background: var(--cream);
-          border: 1px solid var(--wood-dark);
-          border-radius: 8px;
-          padding: 6px 8px;
-          font-size: 12px;
-          color: var(--text-dark);
-          min-width: 40px;
-        }
-        .gift-pick-btn:active { background: var(--gold); }
-      </style>
     </div>
     {% endif %}
 
@@ -215,9 +225,8 @@
         {% endfor %}
       </div>
       {% if game_mode %}
-      <!-- ゲーム形式だけ: 定番コメントをワンタップで送れるボタン(自由入力欄はそのまま残す) -->
-      <div class="preset-comment-row" id="preset-comment-row"
-        style="display: flex; flex-wrap: wrap; gap: 5px; padding: 0 10px 8px;">
+      <!-- ゲーム形式だけ: 定番コメントはポップアップの一覧から選んで送る(自由入力欄はそのまま残す) -->
+      <div class="preset-comment-popup" id="preset-comment-popup">
         <button type="button" class="preset-comment-btn" data-text="それってあなたの感想ですよね？">それってあなたの感想ですよね？</button>
         <button type="button" class="preset-comment-btn" data-text="もうええでしょう">もうええでしょう</button>
         <button type="button" class="preset-comment-btn" data-text="なんだろう、嘘つくのやめてもらっていいですか？">なんだろう、嘘つくのやめてもらっていいですか？</button>
@@ -232,20 +241,14 @@
         <button type="button" class="preset-comment-btn" data-text="1度刃が入ったらスーーー">1度刃が入ったらスーーー</button>
         <button type="button" class="preset-comment-btn" data-text="幸せならOKです">幸せならOKです</button>
       </div>
-      <style>
-        .preset-comment-btn {
-          background: var(--cream);
-          border: 1px solid var(--wood-dark);
-          border-radius: 12px;
-          padding: 4px 9px;
-          font-size: 10px;
-          color: var(--text-dark);
-          white-space: nowrap;
-        }
-        .preset-comment-btn:active { background: var(--gold); }
-      </style>
       {% endif %}
       <div class="comment-input-row">
+        {% if game_mode %}
+        <!-- 押すと上に定番コメント一覧がポップアップで開く。選ぶとその場で送信される -->
+        <button type="button" class="preset-comment-toggle" id="preset-comment-toggle" aria-label="定番コメント" onclick="togglePresetComments()">
+          <i class="ti ti-message-2-bolt"></i>
+        </button>
+        {% endif %}
         <input type="text" id="comment-input" placeholder="コメントを入力…" />
         <button aria-label="送信" onclick="sendComment()">
           <i class="ti ti-send-2"></i>
@@ -326,7 +329,26 @@
   // ---- ログイン中表示・審級表示・退出ボタンの更新 ----
   function updateLoginIndicator() {
     const el = document.getElementById("login-indicator");
-    if (el) el.textContent = `ログイン中: ${myName}（${myRole}）${isHost ? " ・ホスト" : ""}`;
+    if (el) el.textContent = `ログイン中: ${myName}${isHost ? " ・ホスト" : ""}`;
+  }
+
+  // ---- 自分の役割バッジ(2審/3審で役職が変わっても常に最新にしておく) ----
+  const ROLE_META_JS = {
+    defendant: { label: "被告人", icon: "ti-user", accent: "danger" },
+    prosecutor: { label: "検察官", icon: "ti-shield-half-filled", accent: "danger" },
+    defense: { label: "弁護人", icon: "ti-scale", accent: "accent" },
+    gallery: { label: "傍聴席", icon: "ti-users", accent: "accent" },
+  };
+
+  function updateMyRoleBanner() {
+    const meta = ROLE_META_JS[myRole] || ROLE_META_JS.gallery;
+    const icon = document.getElementById("my-role-icon");
+    const label = document.getElementById("my-role-label");
+    if (icon) {
+      icon.className = "icon-circle accent-" + meta.accent;
+      icon.innerHTML = `<i class="ti ${meta.icon}"></i>`;
+    }
+    if (label) label.textContent = meta.label;
   }
 
   function updateRoundIndicator(round) {
@@ -416,10 +438,10 @@
   }
 
   socket.on("objection_card_used", (data) => {
-    spawnObjectionCardFlash(data);
     addSystemMessage(`${data.name}さん（${data.role === "prosecutor" ? "検察官" : "弁護人"}）が異議ありカードを使用！相手の持ち時間を${data.steal_seconds}秒奪いました`);
     // 相手の残り時間がその場で減るので、フェーズ表示に即反映する
     updateActivePhase(data.phase_index, data.remaining);
+    spawnObjectionCardFlash(data);
     if (data.role === myRole) {
       objectionCardUsed = true;
       const btn = document.getElementById("objection-card-button");
@@ -433,21 +455,81 @@
     console.warn("異議ありカードを使用できませんでした:", data.reason);
   });
 
-  // 画面全体を一瞬フラッシュさせて、大きなバナーで演出する(スタンプよりずっと派手に)
+  // ---- 異議ありカードの演出: ロゴ画像を使った必殺技風の全画面演出。
+  // 一瞬で消える花火のようなスタンプと違い、そのフェーズが終わるまで表示され続け、
+  // プログレスバーで「短くなった相手の持ち時間」がどれだけ残っているかを見せる。
+  // 残り5秒からは大きなカウントダウン数字に切り替わる ----
+  let objectionEffect = null; // { phaseIndex, duration, layer, progressBar, countdownEl } | null
+
   function spawnObjectionCardFlash(data) {
     const screenEl = document.querySelector(".screen");
     if (!screenEl) return;
+    clearObjectionEffect(); // 前の演出が万一残っていたら消してから出す
+
+    const durationCard = document.querySelectorAll(".phase-card")[data.phase_index];
+    const duration = durationCard ? (parseInt(durationCard.dataset.duration, 10) || data.remaining) : data.remaining;
+
     const layer = document.createElement("div");
     layer.className = "objection-card-flash-layer";
+
     const bg = document.createElement("div");
     bg.className = "objection-card-flash";
-    const banner = document.createElement("div");
-    banner.className = "objection-card-banner";
-    banner.innerHTML = `<i class="ti ti-bolt"></i> 異議あり！！<br>${data.name}が持ち時間を${data.steal_seconds}秒奪った！`;
+
+    const logo = document.createElement("img");
+    logo.className = "objection-card-logo";
+    logo.src = "{% static 'trial/img/objection_logo.png' %}";
+    logo.alt = "異議あり!!";
+
+    const caption = document.createElement("div");
+    caption.className = "objection-card-caption";
+    caption.textContent = `${data.name}が持ち時間を${data.steal_seconds}秒奪った！`;
+
+    const progressWrap = document.createElement("div");
+    progressWrap.className = "objection-card-progress-wrap";
+    const progressBar = document.createElement("div");
+    progressBar.className = "objection-card-progress-bar";
+    progressWrap.appendChild(progressBar);
+
+    const countdownEl = document.createElement("div");
+    countdownEl.className = "objection-card-countdown";
+
     layer.appendChild(bg);
-    layer.appendChild(banner);
+    layer.appendChild(logo);
+    layer.appendChild(caption);
+    layer.appendChild(progressWrap);
+    layer.appendChild(countdownEl);
     screenEl.appendChild(layer);
-    setTimeout(() => layer.remove(), 1800);
+
+    objectionEffect = { phaseIndex: data.phase_index, duration, layer, progressBar, countdownEl };
+    updateObjectionEffect(data.phase_index, data.remaining);
+  }
+
+  // フェーズの残り時間が更新されるたび(毎秒のphase_tick等)に呼ばれ、
+  // 演出中のプログレスバー/カウントダウンをその時の残り時間に同期させる
+  function updateObjectionEffect(phaseIndex, remaining) {
+    if (!objectionEffect) return;
+    if (phaseIndex !== objectionEffect.phaseIndex || remaining <= 0) {
+      clearObjectionEffect();
+      return;
+    }
+    const pct = Math.max(0, Math.min(100, (remaining / objectionEffect.duration) * 100));
+    objectionEffect.progressBar.style.width = pct + "%";
+
+    if (remaining <= 5) {
+      objectionEffect.countdownEl.style.display = "block";
+      objectionEffect.countdownEl.textContent = remaining;
+      objectionEffect.countdownEl.classList.remove("pulse");
+      // クラスを一度外して付け直すことで、毎秒アニメーションを再生させる
+      void objectionEffect.countdownEl.offsetWidth;
+      objectionEffect.countdownEl.classList.add("pulse");
+    }
+  }
+
+  function clearObjectionEffect() {
+    if (objectionEffect && objectionEffect.layer) {
+      objectionEffect.layer.remove();
+    }
+    objectionEffect = null;
   }
 
   // ---- ゲーム形式: 賭け(ベット) ----
@@ -611,10 +693,21 @@
     }
   }
 
-  // ---- ゲーム形式: 定番コメントのワンタップ送信(自由入力欄と共存) ----
+  // ---- ゲーム形式: 定番コメントはポップアップから選んで送る(自由入力欄と共存) ----
+  function togglePresetComments() {
+    const popup = document.getElementById("preset-comment-popup");
+    const btn = document.getElementById("preset-comment-toggle");
+    if (!popup) return;
+    const opening = !popup.classList.contains("open");
+    popup.classList.toggle("open", opening);
+    if (btn) btn.classList.toggle("active", opening);
+  }
+
   document.querySelectorAll(".preset-comment-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       socket.emit("comment_send", { text: btn.dataset.text, name: myName });
+      // 送ったらポップアップは自動で閉じる
+      togglePresetComments();
     });
   });
 
@@ -650,7 +743,47 @@
     item.appendChild(document.createTextNode(comment.text));
     feed.appendChild(item);
     feed.scrollTop = feed.scrollHeight;
+
+    // 下のコメント欄に名前は出るので、流れるコメントは本文だけにする
+    spawnFlyingComment(comment.text);
   });
+
+  // ---- ニコニコ動画風の弾幕コメント演出 ----
+  // 配信映像の上を、新しく来たコメントが右から左に流れていく。
+  // レイヤーの横幅はレスポンシブで変わるので、CSSの固定keyframesではなく
+  // JSでその都度「レイヤー幅+自分の幅」ぶんtranslateXさせることで、
+  // どの画面サイズでも右端の外から左端の外まできちんと流れきるようにしている
+  const FLY_ROWS = 6; // 縦方向のレーン数(コメントが重なりにくくするため順に振り分ける)
+  let flyRowCursor = 0;
+
+  function spawnFlyingComment(text) {
+    const layer = document.getElementById("comment-fly-layer");
+    if (!layer) return;
+
+    const el = document.createElement("div");
+    el.className = "fly-comment";
+    el.textContent = text;
+
+    const rowIndex = flyRowCursor % FLY_ROWS;
+    flyRowCursor++;
+    el.style.top = `${(rowIndex / FLY_ROWS) * 100}%`;
+
+    layer.appendChild(el);
+
+    const layerWidth = layer.clientWidth || 300;
+    const elWidth = el.offsetWidth || 100;
+    const distance = layerWidth + elWidth;
+    const duration = 6 + Math.random() * 2.5; // 6〜8.5秒かけてゆっくり流れる
+
+    el.style.left = `${layerWidth}px`; // 右端の外からスタート
+
+    requestAnimationFrame(() => {
+      el.style.transition = `transform ${duration}s linear`;
+      el.style.transform = `translateX(-${distance}px)`;
+    });
+
+    setTimeout(() => el.remove(), duration * 1000 + 300);
+  }
 
   // ---- フェーズ進行・ゲージ ----
   function formatTime(sec) {
@@ -673,6 +806,8 @@
       }
     });
     updateSkipButtonVisibility(phaseIndex);
+    updateSpeakerIndicatorForPhase(phaseIndex);
+    updateObjectionEffect(phaseIndex, remaining);
   }
 
   // ---- 早送り(話し終わった本人だけ、自分のフェーズを早送りできる) ----
@@ -743,6 +878,8 @@
     // 全フェーズ終了＝検察官/弁護人の発言タイムも終わりなので、マイクを止める
     currentPhaseIndex = -2;
     applyBroadcastRules();
+    updateSpeakerIndicatorForPhase(-2); // 役職名の大きな表示も消す
+    clearObjectionEffect(); // 異議ありカードの演出も、全フェーズ終了と同時に消す
   });
 
   // ---- 判決投票 ----
@@ -830,6 +967,7 @@
     // 検察官/弁護人が再抽選されて、自分の役割が変わっている可能性がある
     myRole = data.role_map[myName] || "gallery";
     updateLoginIndicator();
+    updateMyRoleBanner();
     updateRoundIndicator(data.round);
     updateLeaveButtonVisibility();
 
@@ -1006,7 +1144,6 @@
       const tag = document.getElementById("speaking-tag");
       tag.textContent = (peer ? peer.name : "発言者") + " 発言中";
       tag.style.display = "block";
-      showSpeakerIndicator(peer);
     }
   }
 
@@ -1014,28 +1151,47 @@
     const peer = knownPeers[sid];
     if (peer && peer.role !== "defendant") {
       document.getElementById("speaking-tag").style.display = "none";
-      hideSpeakerIndicator();
     }
   }
 
-  // ---- ゲーム形式: 検察質問/弁護士弁護フェーズ中の、大きく半透明な役職名表示 ----
-  const ROLE_INDICATOR_LABEL = { prosecutor: "検察官", defense: "弁護人" };
+  // ---- ゲーム形式: 検察質問/弁護士弁護/被告人陳述、各フェーズ中の大きく半透明な役職名表示。
+  // 以前はWebRTCの音声トラックが実際に届いたタイミング(ontrack)で出していたが、
+  // 接続確立までのタイムラグや失敗で表示されないことがあったため、サーバーが
+  // 配信するフェーズ状態(phase_index)を直接見て切り替える方式に変更(こちらの方が確実)。
+  // 被告人の陳述フェーズ(phase_index=0)も、今まで表示が無かったのでここで追加した ----
+  const PHASE_ROLE_INFO = {
+    0: { role: "defendant", label: "被告人" },
+    1: { role: "prosecutor", label: "検察官" },
+    2: { role: "defense", label: "弁護人" },
+  };
 
-  function showSpeakerIndicator(peer) {
-    if (!gameMode || !peer) return;
-    const overlay = document.getElementById("speaker-indicator-overlay");
-    if (!overlay) return;
-    const roleEl = document.getElementById("speaker-indicator-role");
-    const nameEl = document.getElementById("speaker-indicator-name");
-    roleEl.textContent = ROLE_INDICATOR_LABEL[peer.role] || "発言中";
-    nameEl.textContent = peer.name || "";
-    overlay.style.display = "flex";
+  function nameForPhaseRole(role) {
+    if (role === "defendant") return "{{ defendant_name|escapejs }}";
+    if (role === "prosecutor") {
+      const el = document.getElementById("prosecutor-name");
+      return el ? el.textContent : "";
+    }
+    if (role === "defense") {
+      const el = document.getElementById("defense-name");
+      return el ? el.textContent : "";
+    }
+    return "";
   }
 
-  function hideSpeakerIndicator() {
+  function updateSpeakerIndicatorForPhase(phaseIndex) {
     if (!gameMode) return;
     const overlay = document.getElementById("speaker-indicator-overlay");
-    if (overlay) overlay.style.display = "none";
+    if (!overlay) return;
+    const info = PHASE_ROLE_INFO[phaseIndex];
+    if (!info) {
+      overlay.style.display = "none";
+      overlay.className = "speaker-indicator-overlay";
+      return;
+    }
+    document.getElementById("speaker-indicator-role").textContent = info.label;
+    document.getElementById("speaker-indicator-name").textContent = nameForPhaseRole(info.role);
+    overlay.className = "speaker-indicator-overlay role-" + info.role;
+    overlay.style.display = "flex";
   }
 
   socket.on("trial_peer_list", (data) => {

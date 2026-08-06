@@ -243,6 +243,16 @@ def trial(request):
 
     gift_assets = GIFT_ASSETS if game_mode else []
     gift_asset_paths = [f"trial/video/gifts/{a}" for a in gift_assets]
+    gift_thumb_paths = [
+        f"trial/img/gifts/{a.rsplit('.', 1)[0]}_thumb.jpg" for a in gift_assets
+    ]
+    gift_options = list(enumerate(gift_thumb_paths))  # [(0, "trial/img/gifts/gift_01_thumb.jpg"), ...]
+
+    case_template = state.get("case_template")
+    difficulty_label = (
+        DIFFICULTY_LABELS.get(case_template.get("difficulty"), "") if case_template else ""
+    )
+    role_meta = ROLE_META.get(my_role, {})
 
     return render(
         request,
@@ -268,7 +278,8 @@ def trial(request):
             "trial_round": state["trial_round"],
             "judge_name": state["judge_name"],
             "game_mode": game_mode,
-            "case_template": state.get("case_template"),
+            "case_template": case_template,
+            "difficulty_label": difficulty_label,
             "wallet_balance": state["wallets"].get(my_name),
             "bet_counts": state["bet_counts"],
             "already_bet": already_bet,
@@ -276,8 +287,11 @@ def trial(request):
             "objection_card_used": objection_card_used,
             "gift_assets": gift_assets,
             "gift_asset_paths": gift_asset_paths,
+            "gift_thumb_paths": gift_thumb_paths,
+            "gift_options": gift_options,
             "gift_cost": GIFT_COST,
             "gift_range": range(len(GIFT_ASSETS)) if game_mode else range(0),
+            "role_meta": role_meta,
         },
     )
 
