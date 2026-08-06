@@ -187,8 +187,10 @@ def use_objection_card(sid, data):
 
 @sio.event
 def send_gift(sid, data):
-    """ゲーム形式専用: 傍聴席が自分の裁判内ポイントを使って妨害ギフト動画を送る。
-    タイミング制限(被告人陳述フェーズの最初の40秒は不可)・残高チェックはsend_gift()側で行う。
+    """ゲーム形式専用: 傍聴席・検察官・弁護人が投げ銭(妨害ギフト)動画を送る(被告人は送れない)。
+    傍聴席は自分の裁判内ウォレットから引かれ、検察官/弁護人はウォレットが無い代わりに
+    送った分だけ最終スコアから引かれる(state.send_gift側で処理)。タイミング制限
+    (被告人陳述フェーズの最初の40秒は不可)もsend_gift()側でチェックする。
     実際の動画再生・クロマキー処理・音量調整はすべてクライアント側(各ブラウザ)で行う"""
     name = (data or {}).get("name") or ""
     raw_index = (data or {}).get("gift_index")
@@ -200,7 +202,8 @@ def send_gift(sid, data):
 
     ok, result = _send_gift(name, gift_index)
     if ok:
-        sio.emit("gift_placed", {"balance": result}, to=sid)
+        # 傍聴席なら{"role","balance"}、検察官/弁護人なら{"role","spend"}が返ってくる
+        sio.emit("gift_placed", result, to=sid)
         sio.emit(
             "gift_sent",
             {"name": name, "gift_index": gift_index, "asset": GIFT_ASSETS[gift_index]},

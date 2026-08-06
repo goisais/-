@@ -18,7 +18,7 @@ def generate_access_code():
 # 経験上、動画自体にアルファチャンネルを持たせるより確実に動く)。
 # 全素材 260x260 に統一済み(元の比率を保ったまま緑パディング)、音声あり。
 GIFT_ASSETS = [f"gift_{i:02d}.mp4" for i in range(1, 16)]
-GIFT_COST = 3  # 1回送るのに使う裁判内ポイント(傍聴席の10p持ち点のうち)
+GIFT_COST = 1  # 1回送るのに使う裁判内ポイント(連打しやすいように軽くしてある)
 
 
 # ---------- アカウント永続化(メール登録なしの匿名プロフィール) ----------
@@ -250,6 +250,7 @@ def make_initial_state():
         "case_template": None,  # ゲーム形式で抽選されたお題(タイトル・罪状・状況・言い分・難易度)
         "ranking": None,  # ゲーム形式の判決確定時に計算される、その裁判のランキング結果
         "objection_card_used": {"prosecutor": False, "defense": False},  # ゲーム形式の異議ありカード(1裁判1回)
+        "gift_spend": {"prosecutor": 0, "defense": 0},  # 検察官/弁護人が送った投げ銭の合計(ウォレットが無いので最終スコアから引く)
     }
 
 
@@ -389,6 +390,7 @@ def start_trial_game_mode(defendant, case_template):
             "bets": {},
             "bet_counts": {"guilty": 0, "innocent": 0},
             "objection_card_used": {"prosecutor": False, "defense": False},
+            "gift_spend": {"prosecutor": 0, "defense": 0},
         }
     )
 
@@ -667,12 +669,17 @@ GIFT_LOCKED_REMAINING_THRESHOLD = 20  # 被告人陳述フェーズは残りが�
 
 
 def send_gift(name, gift_index):
-    """傍聴席が自分の裁判内ポイントを使って、妨害ギフト動画を送る。
-    金額はGIFT_COST固定。成功したら(True, 送信後の残高)、失敗したら(False, 理由)を返す"""
+    """投げ銭(妨害ギフト)を送る。傍聴席は自分の裁判内ウォレットから引く(残高が無ければ送れない)。
+    検察官・弁護人もウォレットは持たないが送れるようにしてあり、その代わり送った分は
+    ランキング計算時に自分の最終スコアからそのまま引かれる(上限は特に設けていない/0未満にはしない)。
+    被告人は自分自身には送れない。
+    成功したら(True, 詳細dict)、失敗したら(False, 理由文字列)を返す。
+    詳細dictの中身は役職によって変わる: 傍聴席は{"role","balance"}、検察官/弁護人は{"role","spend"}"""
     if lobby_state.get("mode") != "game":
         return False, "not_game_mode"
-    if lobby_state["role_map"].get(name) != "gallery":
-        return False, "not_gallery"
+    role = lobby_state["role_map"].get(name)
+    if role not in ("gallery", "prosecutor", "defense"):
+        return False, "not_allowed"
     if not isinstance(gift_index, int) or not (0 <= gift_index < len(GIFT_ASSETS)):
         return False, "invalid_gift"
 
@@ -683,12 +690,17 @@ def send_gift(name, gift_index):
     elif phase_index not in (1, 2):
         return False, "no_active_phase"
 
-    balance = lobby_state["wallets"].get(name, 0)
-    if balance < GIFT_COST:
-        return False, "insufficient_balance"
+    if role == "gallery":
+        balance = lobby_state["wallets"].get(name, 0)
+        if balance < GIFT_COST:
+            return False, "insufficient_balance"
+        lobby_state["wallets"][name] = balance - GIFT_COST
+        return True, {"role": role, "balance": lobby_state["wallets"][name]}
 
-    lobby_state["wallets"][name] = balance - GIFT_COST
-    return True, lobby_state["wallets"][name]
+    # 検察官・弁護人: ウォレットではなく、最終スコアから引かれる「使った分」を積み上げる
+    spend = lobby_state.setdefault("gift_spend", {"prosecutor": 0, "defense": 0})
+    spend[role] = spend.get(role, 0) + GIFT_COST
+    return True, {"role": role, "spend": spend[role]}
 
 # 傍聴席全員(役職者以外)の最終順位に応じて付与する永続ポイント。
 # 同じスコアの人は同じ順位・同じ永続ポイントになる(例:1位が2人ならどちらも10p)
@@ -699,8 +711,12 @@ def _court_role_score(role, outcome):
     card_used = lobby_state.get("objection_card_used", {}).get(role, False)
     won = _FAVORABLE_OUTCOME.get(role) == outcome
     if not won:
-        return COURT_ROLE_LOSE_SCORE
-    return COURT_ROLE_WIN_SCORE_WITH_CARD if card_used else COURT_ROLE_WIN_SCORE
+        base = COURT_ROLE_LOSE_SCORE
+    else:
+        base = COURT_ROLE_WIN_SCORE_WITH_CARD if card_used else COURT_ROLE_WIN_SCORE
+    # 検察官・弁護人が投げ銭を送った分は、最終スコアからそのまま引く(0未満にはしない)
+    gift_spend = lobby_state.get("gift_spend", {}).get(role, 0)
+    return max(0, base - gift_spend)
 
 
 def compute_game_mode_ranking(outcome):

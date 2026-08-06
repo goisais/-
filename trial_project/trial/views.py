@@ -240,6 +240,9 @@ def trial(request):
     already_bet = my_name in state["bets"] if game_mode else False
     is_lawyer = my_role in ("prosecutor", "defense")
     objection_card_used = state.get("objection_card_used", {}).get(my_role, False) if is_lawyer else False
+    # 傍聴席・検察官・弁護人は投げ銭を送れる(被告人は自分に送れないので対象外)
+    can_send_gift = my_role in ("gallery", "prosecutor", "defense")
+    gift_spend = state.get("gift_spend", {}).get(my_role, 0) if is_lawyer else 0
 
     gift_assets = GIFT_ASSETS if game_mode else []
     gift_asset_paths = [f"trial/video/gifts/{a}" for a in gift_assets]
@@ -291,6 +294,8 @@ def trial(request):
             "gift_options": gift_options,
             "gift_cost": GIFT_COST,
             "gift_range": range(len(GIFT_ASSETS)) if game_mode else range(0),
+            "can_send_gift": can_send_gift,
+            "gift_spend": gift_spend,
             "role_meta": role_meta,
         },
     )

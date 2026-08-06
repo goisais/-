@@ -180,11 +180,16 @@
     </div>
     {% endif %}
 
-    {% if game_mode and my_role == "gallery" %}
-    <!-- ゲーム形式: 傍聴席だけが送れる投げ銭(妨害ギフト)。被告人陳述フェーズ中は
-         最初の40秒送れず、残り20秒だけ解禁(検察質問・弁護士弁護フェーズは無制限) -->
+    {% if game_mode and can_send_gift %}
+    <!-- ゲーム形式: 傍聴席・検察官・弁護人が送れる投げ銭(妨害ギフト)。被告人陳述フェーズ中は
+         最初の40秒送れず、残り20秒だけ解禁(検察質問・弁護士弁護フェーズは無制限)。
+         傍聴席は裁判内ウォレットから、検察官/弁護人はウォレットが無い代わりに
+         送った分だけ最終スコアから引かれる -->
     <div class="verdict-box" id="gift-box" style="margin-top: 10px;">
-      <div class="verdict-title">妨害ギフトを送る<span style="font-size: 11px; font-weight: 400;">（1回{{ gift_cost }}p）</span></div>
+      <div class="verdict-title">
+        妨害ギフトを送る<span style="font-size: 11px; font-weight: 400;">（1回{{ gift_cost }}p）</span>
+        {% if is_lawyer %}<span id="gift-spend-note" style="font-size: 10px; font-weight: 400; color: var(--text-brown-muted);">（自分のスコアから-<span id="gift-spend-value">{{ gift_spend }}</span>p）</span>{% endif %}
+      </div>
       <div class="gift-picker-row" id="gift-picker-row" style="display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 6px;">
         {% for i, thumb in gift_options %}
         <button type="button" class="gift-pick-btn" onclick="sendGift({{ i }})" title="妨害ギフト{{ forloop.counter }}">
@@ -595,7 +600,15 @@
   }
 
   socket.on("gift_placed", (data) => {
-    updateWalletBalance(data.balance);
+    if (typeof data.balance === "number") {
+      // 傍聴席: ウォレット残高が減る
+      updateWalletBalance(data.balance);
+    }
+    if (typeof data.spend === "number") {
+      // 検察官/弁護人: ウォレットは無いので、最終スコアから引かれる合計を更新表示する
+      const el = document.getElementById("gift-spend-value");
+      if (el) el.textContent = data.spend;
+    }
     const note = document.getElementById("gift-result-note");
     if (note) { note.style.color = "var(--success)"; note.textContent = "ギフトを送りました！"; }
   });
@@ -604,7 +617,7 @@
     const note = document.getElementById("gift-result-note");
     if (!note) return;
     const reasons = {
-      not_gallery: "傍聴席だけが送れます",
+      not_allowed: "被告人は送れません",
       invalid_gift: "そのギフトは選べません",
       defendant_statement_locked: "被告人陳述の最初の40秒は送れません(残り20秒だけ解禁)",
       no_active_phase: "今は送れません",
