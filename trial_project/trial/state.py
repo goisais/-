@@ -248,6 +248,7 @@ def make_initial_state():
         "mode": "classic",  # "classic"(今までの自由形式) or "game"(ユーモア王選手権むけの新モード)
         "case_template": None,  # ゲーム形式で抽選されたお題(タイトル・罪状・状況・言い分・難易度)
         "ranking": None,  # ゲーム形式の判決確定時に計算される、その裁判のランキング結果
+        "objection_card_used": {"prosecutor": False, "defense": False},  # ゲーム形式の異議ありカード(1裁判1回)
     }
 
 
@@ -386,6 +387,7 @@ def start_trial_game_mode(defendant, case_template):
             "wallets": _init_gallery_wallets(role_map),
             "bets": {},
             "bet_counts": {"guilty": 0, "innocent": 0},
+            "objection_card_used": {"prosecutor": False, "defense": False},
         }
     )
 
@@ -624,6 +626,37 @@ _FAVORABLE_OUTCOME = {
     "defense": "innocent",
     "prosecutor": "guilty",
 }
+
+# 異議ありカード: 検察官・弁護人がそれぞれ1裁判に1回だけ使える。相手の「持ち時間」
+# (=相手が担当するフェーズ)から一気に20秒奪う。奪う対象のフェーズは固定:
+#   検察官のカード → 弁護士弁護フェーズ(phase_index=2)の残り時間を削る
+#   弁護人のカード → 検察質問フェーズ(phase_index=1)の残り時間を削る
+# 被告人陳述フェーズ(phase_index=0)からは奪えない(被告人はどちらの「相手」でもないため)
+OBJECTION_CARD_STEAL_SECONDS = 20
+_OBJECTION_CARD_TARGET_PHASE = {"prosecutor": 2, "defense": 1}
+
+
+def use_objection_card(name, role):
+    """検察官/弁護人が異議ありカードを使う。成功したら(True, 奪った秒数)、
+    失敗したら(False, 理由文字列)を返す。ゲーム形式以外・役職不一致・使用済み・
+    相手のフェーズ中でない場合は失敗する。残り時間が1秒未満にはならないようにする"""
+    if lobby_state.get("mode") != "game":
+        return False, "not_game_mode"
+    if role not in ("prosecutor", "defense"):
+        return False, "invalid_role"
+    if lobby_state["role_map"].get(name) != role:
+        return False, "not_your_role"
+    used = lobby_state.setdefault("objection_card_used", {"prosecutor": False, "defense": False})
+    if used.get(role):
+        return False, "already_used"
+    target_phase = _OBJECTION_CARD_TARGET_PHASE[role]
+    if lobby_state["phase_index"] != target_phase:
+        return False, "not_opponent_turn"
+
+    steal = min(OBJECTION_CARD_STEAL_SECONDS, max(0, lobby_state["phase_remaining"] - 1))
+    lobby_state["phase_remaining"] -= steal
+    used[role] = True
+    return True, steal
 
 # 傍聴席全員(役職者以外)の最終順位に応じて付与する永続ポイント。
 # 同じスコアの人は同じ順位・同じ永続ポイントになる(例:1位が2人ならどちらも10p)

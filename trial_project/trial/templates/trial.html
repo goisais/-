@@ -141,13 +141,25 @@
     </div>
     {% endif %}
 
-    <!-- 異議ありボタン: サーバーにイベントを送って、全員の画面のカウントを同時に更新 -->
+    {% if not game_mode %}
+    <!-- 異議ありボタン(自由形式だけ): サーバーにイベントを送って、全員の画面のカウントを同時に更新 -->
     <div class="objection-btn">
       <button id="objection-button" onclick="sendObjection()">
         <i class="ti ti-gavel"></i>
         異議あり！ <span class="count" id="objection-count">{{ objection_count }}</span>
       </button>
     </div>
+    {% else %}
+    <!-- ゲーム形式: 誰でも押せる異議ありスタンプの代わりに、検察官/弁護人だけが使える
+         「異議ありカード」(1裁判1回、相手の持ち時間を20秒奪う)に置き換える -->
+    <div class="objection-btn" id="objection-card-section" style="{% if not is_lawyer %}display: none;{% endif %}">
+      <button id="objection-card-button" onclick="useObjectionCard()" {% if objection_card_used %}disabled{% endif %}
+        style="{% if objection_card_used %}opacity: 0.5;{% endif %}">
+        <i class="ti ti-cards"></i>
+        異議ありカード <span class="count" id="objection-card-status">{% if objection_card_used %}使用済み{% else %}未使用{% endif %}</span>
+      </button>
+    </div>
+    {% endif %}
 
     <!-- 常時表示のコメント欄。ホスト/参加者どちらの画面でも同じで、全員にリアルタイム配信される -->
     <div class="comment-box">
@@ -348,6 +360,49 @@
     stamp.addEventListener("animationend", () => stamp.remove());
     // 万が一animationendが発火しない環境向けの保険
     setTimeout(() => stamp.remove(), 3000);
+  }
+
+  // ---- ゲーム形式: 異議ありカード(1裁判1回、相手の持ち時間を20秒奪う) ----
+  let objectionCardUsed = {{ objection_card_used|yesno:"true,false" }};
+
+  function useObjectionCard() {
+    if (objectionCardUsed) return;
+    socket.emit("use_objection_card", { name: myName });
+  }
+
+  socket.on("objection_card_used", (data) => {
+    spawnObjectionCardFlash(data);
+    addSystemMessage(`${data.name}さん（${data.role === "prosecutor" ? "検察官" : "弁護人"}）が異議ありカードを使用！相手の持ち時間を${data.steal_seconds}秒奪いました`);
+    // 相手の残り時間がその場で減るので、フェーズ表示に即反映する
+    updateActivePhase(data.phase_index, data.remaining);
+    if (data.role === myRole) {
+      objectionCardUsed = true;
+      const btn = document.getElementById("objection-card-button");
+      if (btn) { btn.disabled = true; btn.style.opacity = "0.5"; }
+      const status = document.getElementById("objection-card-status");
+      if (status) status.textContent = "使用済み";
+    }
+  });
+
+  socket.on("objection_card_rejected", (data) => {
+    console.warn("異議ありカードを使用できませんでした:", data.reason);
+  });
+
+  // 画面全体を一瞬フラッシュさせて、大きなバナーで演出する(スタンプよりずっと派手に)
+  function spawnObjectionCardFlash(data) {
+    const screenEl = document.querySelector(".screen");
+    if (!screenEl) return;
+    const layer = document.createElement("div");
+    layer.className = "objection-card-flash-layer";
+    const bg = document.createElement("div");
+    bg.className = "objection-card-flash";
+    const banner = document.createElement("div");
+    banner.className = "objection-card-banner";
+    banner.innerHTML = `<i class="ti ti-bolt"></i> 異議あり！！<br>${data.name}が持ち時間を${data.steal_seconds}秒奪った！`;
+    layer.appendChild(bg);
+    layer.appendChild(banner);
+    screenEl.appendChild(layer);
+    setTimeout(() => layer.remove(), 1800);
   }
 
   // ---- ゲーム形式: 賭け(ベット) ----

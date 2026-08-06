@@ -111,6 +111,55 @@ body {
   }
 }
 
+/* ゲーム形式: 異議ありカード使用時の全画面フラッシュ演出(スタンプよりずっと派手にする) */
+.objection-card-flash-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.objection-card-flash {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 8, 4, 0.6);
+  animation: card-flash-bg 0.9s ease-out forwards;
+}
+
+.objection-card-banner {
+  position: relative;
+  background: var(--danger);
+  color: var(--on-danger);
+  border: 3px solid var(--cream);
+  border-radius: 12px;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.5;
+  text-align: center;
+  max-width: 80%;
+  transform: scale(0.4) rotate(-6deg);
+  opacity: 0;
+  animation: card-banner-pop 1.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes card-flash-bg {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes card-banner-pop {
+  0% { transform: scale(0.4) rotate(-6deg); opacity: 0; }
+  18% { transform: scale(1.15) rotate(2deg); opacity: 1; }
+  30% { transform: scale(1) rotate(0deg); opacity: 1; }
+  82% { transform: scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 0; }
+}
+
 /* ヘッダー共通 */
 .screen-header {
   background: var(--wood-dark);

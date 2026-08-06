@@ -26,6 +26,7 @@ from trial.state import (
     place_bet as _place_bet,
     determine_verdict_game_mode,
     compute_game_mode_ranking,
+    use_objection_card as _use_objection_card,
 )
 
 LOBBY_ROOM = "lobby"
@@ -155,6 +156,31 @@ def place_bet(sid, data):
         sio.emit("bet_counts_updated", {"counts": lobby_state["bet_counts"]}, room=TRIAL_ROOM)
     else:
         sio.emit("bet_rejected", {"reason": result}, to=sid)
+
+
+@sio.event
+def use_objection_card(sid, data):
+    """ゲーム形式専用: 検察官/弁護人が1裁判1回だけ使える異議ありカード。
+    相手の担当フェーズの残り時間から一気に20秒奪う(フェーズを跨いで後付けはしない、
+    その場で今のフェーズの残り時間そのものを削る)。全員の画面に演出付きで通知する"""
+    name = (data or {}).get("name") or ""
+    role = lobby_state["role_map"].get(name)
+    ok, result = _use_objection_card(name, role)
+    if ok:
+        steal = result
+        sio.emit(
+            "objection_card_used",
+            {
+                "name": name,
+                "role": role,
+                "steal_seconds": steal,
+                "phase_index": lobby_state["phase_index"],
+                "remaining": lobby_state["phase_remaining"],
+            },
+            room=TRIAL_ROOM,
+        )
+    else:
+        sio.emit("objection_card_rejected", {"reason": result}, to=sid)
 
 
 @sio.event

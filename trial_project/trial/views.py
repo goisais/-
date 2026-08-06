@@ -236,6 +236,8 @@ def trial(request):
 
     game_mode = state.get("mode") == "game"
     already_bet = my_name in state["bets"] if game_mode else False
+    is_lawyer = my_role in ("prosecutor", "defense")
+    objection_card_used = state.get("objection_card_used", {}).get(my_role, False) if is_lawyer else False
 
     return render(
         request,
@@ -265,6 +267,8 @@ def trial(request):
             "wallet_balance": state["wallets"].get(my_name),
             "bet_counts": state["bet_counts"],
             "already_bet": already_bet,
+            "is_lawyer": is_lawyer,
+            "objection_card_used": objection_card_used,
         },
     )
 
