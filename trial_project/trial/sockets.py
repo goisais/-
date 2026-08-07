@@ -29,6 +29,7 @@ from trial.state import (
     use_objection_card as _use_objection_card,
     send_gift as _send_gift,
     GIFT_ASSETS,
+    phase_lock,
 )
 
 LOBBY_ROOM = "lobby"
@@ -383,11 +384,39 @@ def notify_trial_started():
 # ---------- フェーズタイマー(サーバー主導のカウントダウン) ----------
 
 def start_phase_timer():
-    """開廷する が押されたときに呼び出す。前の裁判のタイマーは世代番号で自然に止まる。"""
-    global _timer_thread, _timer_generation
+    """即座にタイマーを開始する(2審/3審など、画面遷移を伴わずその場でフェーズを
+    やり直す場合に使う。前の裁判のタイマーは世代番号で自然に止まる)"""
+    my_generation = _bump_timer_generation()
+    _spawn_timer_thread(my_generation)
+
+
+def schedule_phase_timer_start(start_at):
+    """役割発表画面の「全員同時カウントダウン」がちょうど終わる時刻(start_at, unixtime)に
+    合わせて、フェーズタイマーの開始そのものを遅らせる。これをしないと、ホストが
+    「開廷する」を押した瞬間からサーバー側の時間が進んでしまい、参加者が実際に
+    /trialへ着く頃には最初のフェーズがもう何秒も減っている、という食い違いが起きる"""
+    my_generation = _bump_timer_generation()
+    delay = max(0.0, start_at - time.time())
+    threading.Thread(target=_delayed_start_timer, args=(my_generation, delay), daemon=True).start()
+
+
+def _delayed_start_timer(my_generation, delay):
+    time.sleep(delay)
+    _spawn_timer_thread(my_generation)
+
+
+def _bump_timer_generation():
+    global _timer_generation
     with _timer_lock:
         _timer_generation += 1
-        my_generation = _timer_generation
+        return _timer_generation
+
+
+def _spawn_timer_thread(my_generation):
+    global _timer_thread
+    with _timer_lock:
+        if my_generation != _timer_generation:
+            return  # 待っている間に、もっと新しい裁判が始まっていた
         _timer_thread = threading.Thread(target=_run_phase_timer, args=(my_generation,), daemon=True)
         _timer_thread.start()
 
@@ -402,7 +431,10 @@ def _run_phase_timer(my_generation):
         if not (0 <= lobby_state["phase_index"] < len(DEFAULT_PHASES)):
             return
 
-        lobby_state["phase_remaining"] -= 1
+        # 異議ありカードのハンドラ(別スレッド)と同じロックを使って、-1する操作を
+        # 読み取り→書き込みの1操作として守る(state.pyのuse_objection_card参照)
+        with phase_lock:
+            lobby_state["phase_remaining"] -= 1
 
         g = lobby_state["gauges"]
         g["nervousness"] = random_walk(g["nervousness"])

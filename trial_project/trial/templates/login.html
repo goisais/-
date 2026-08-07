@@ -6,7 +6,10 @@
   <div class="screen ornate-theme">
 
     <div class="ornate-logo-block">
-      <img src="{% static 'trial/img/logo.png' %}" alt="言い訳裁判" />
+      <!-- logo.pngは上下に大きな透明の余白(スパーク装飾のための余白)を含んでいて、
+           小さく表示すると「ロゴの周りだけ妙に空いてる」ように見えてしまっていた。
+           文字部分をタイトにクロップしたlogo_tight.pngに差し替えている -->
+      <img src="{% static 'trial/img/logo_tight.png' %}" alt="言い訳裁判" />
       <div class="ornate-tagline">判決の時間です</div>
       <div class="ornate-sub">くだらないほど盛り上がる、模擬裁判エンタメ</div>
     </div>
@@ -24,8 +27,8 @@
     </div>
     {% endif %}
 
-    <div class="section-pad" style="padding-top: 12px; padding-bottom: 4px;">
-      <div class="helper-text" style="margin-bottom: 8px;">はじめかたを選んでね</div>
+    <div class="section-pad" style="padding-top: 14px; padding-bottom: 2px;">
+      <div class="helper-text" style="margin-bottom: 6px;">はじめかたを選んでね</div>
 
       <!-- ホスト: 自由形式(今まで通り、被告人・制限時間を自分で決める) -->
       <form action="{% url 'enter' %}" method="post" class="host-form">
@@ -85,7 +88,7 @@
       </form>
     </div>
 
-    <div style="height: 18px;"></div>
+    <div style="height: 2px;"></div>
   </div>
 </div>
 <script>

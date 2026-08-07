@@ -17,6 +17,8 @@
   - 罰ゲーム演出（カメラ撮影 → コラ画像生成）
 """
 
+import time
+
 from django.shortcuts import render, redirect
 
 from trial.state import (
@@ -36,8 +38,10 @@ from trial.state import (
     GAME_MODE_PHASE_SECONDS,
     GIFT_ASSETS,
     GIFT_COST,
+    REVEAL_SECONDS_CLASSIC,
+    REVEAL_SECONDS_GAME,
 )
-from trial.sockets import notify_participants_updated, notify_trial_started, start_phase_timer
+from trial.sockets import notify_participants_updated, notify_trial_started, schedule_phase_timer_start
 
 
 def index(request):
@@ -166,8 +170,13 @@ def host_setup_start(request):
     lobby_state["phase_durations"] = durations
 
     start_trial(case_name, defendant)
+    # 全員が役割発表画面の同時カウントダウンを終えて/trialに切り替わる、まさにその
+    # 瞬間にサーバー側のフェーズタイマーも動き出すようにする(でないと、ホストが
+    # 開廷を押した瞬間から時間が進んでしまい、被告人が画面に着く頃には
+    # 最初のフェーズがもう何秒も減っている、という食い違いが起きる)
+    lobby_state["trial_start_at"] = time.time() + REVEAL_SECONDS_CLASSIC
     notify_trial_started()
-    start_phase_timer()
+    schedule_phase_timer_start(lobby_state["trial_start_at"])
     return redirect("role_reveal")
 
 
@@ -180,6 +189,9 @@ def host_setup_game(request):
         {
             "participants": lobby_state["participants"],
             "access_code": lobby_state["access_code"],
+            # 参加者一覧の中で自分(ホスト)がどれか、待機画面と同じ見た目で
+            # 「あなた」表示にするために必要
+            "my_name": request.session.get("username"),
         },
     )
 
@@ -194,9 +206,14 @@ def host_setup_game_start(request):
 
     case_template = pick_random_case_template()
     start_trial_game_mode(defendant, case_template)
+    # 全員が役割発表画面の同時カウントダウンを終えて/trialに切り替わる、まさにその
+    # 瞬間にサーバー側のフェーズタイマーも動き出すようにする(でないと、ホストが
+    # 開廷を押した瞬間から時間が進んでしまい、被告人が画面に着く頃には
+    # 最初のフェーズがもう何秒も減っている、という食い違いが起きる)
+    lobby_state["trial_start_at"] = time.time() + REVEAL_SECONDS_GAME
     notify_trial_started()
-    start_phase_timer()
-    # ホストも参加者と同じ役割発表画面(15秒確認→カウントダウン→全員同時入廷)を
+    schedule_phase_timer_start(lobby_state["trial_start_at"])
+    # ホストも参加者と同じ役割発表画面(全員同時カウントダウン)を
     # 経由させる。以前はここで直接/trialへ飛ばしていたため、ホストだけ役割発表を
     # 見られず、しかも他の参加者より先にひとりだけ法廷画面に入ってしまっていた
     return redirect("role_reveal")
@@ -224,7 +241,14 @@ def role_reveal(request):
     role = {"key": role_key, **ROLE_META[role_key]}
     game_mode = lobby_state.get("mode") == "game"
     case_template = lobby_state.get("case_template") if game_mode else None
-    context = {"role": role, "my_name": username, "game_mode": game_mode}
+    context = {
+        "role": role,
+        "my_name": username,
+        "game_mode": game_mode,
+        # 全員の画面で完全に同じ数字が出るよう、カウントダウンの目標時刻(unixtime)を
+        # そのまま渡す。クライアント側はDate.now()との差分で残り秒数を計算する
+        "trial_start_at": lobby_state.get("trial_start_at"),
+    }
     if case_template:
         context["case_template"] = case_template
         context["difficulty_label"] = DIFFICULTY_LABELS.get(case_template.get("difficulty"), "")

@@ -3,9 +3,9 @@
 
 {% block content %}
 <div class="phone-frame">
-  <div class="screen ornate-theme">
+  <div class="screen ornate-theme reveal-screen">
 
-    <div class="ornate-page-header" style="padding-bottom: 4px;">
+    <div class="ornate-page-header" style="padding-top: 56px; padding-bottom: 0;">
       <span class="ornate-ribbon">開廷</span>
       <div style="font-size: 11px; color: var(--ornate-gold); margin-top: 8px; letter-spacing: 1px;">
         ログイン中: {{ my_name }}
@@ -20,45 +20,40 @@
       </div>
 
       <div class="role-name">{{ role.label }}</div>
-      <div class="role-desc">{{ role.description }}</div>
+      <div class="role-desc" style="margin-top: 14px;">{{ role.description }}</div>
 
     {% if game_mode and case_template %}
-    <!-- ゲーム形式: お題の詳細をここで確認してから、カウントダウンで全員一斉に開廷する -->
-    <div class="field" style="padding-top: 0;">
+    <!-- ゲーム形式: お題の詳細をここで確認してから、カウントダウンで全員一斉に開廷する。
+         状況・被告人の言い分は情報過多で読みにくいという指摘があったので、罪状だけに絞った -->
+    <div class="field" style="padding-top: 60px;">
       <div class="ornate-note-box" style="text-align: left; line-height: 1.7;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
           <span style="font-size: 13px; font-weight: 600; color: var(--ornate-gold-bright);">{{ case_template.title }}</span>
           <span style="font-size: 10px; border: 1px solid var(--ornate-gold); color: var(--ornate-gold-bright); border-radius: 4px; padding: 1px 6px;">難易度：{{ difficulty_label }}</span>
         </div>
         <div><strong style="color: var(--ornate-text);">罪状：</strong>{{ case_template.charge }}</div>
-        <div style="margin-top: 4px;"><strong style="color: var(--ornate-text);">状況：</strong>{{ case_template.situation }}</div>
-        <div style="margin-top: 4px;"><strong style="color: var(--ornate-text);">被告人の言い分：</strong>{{ case_template.claim }}</div>
       </div>
-    </div>
-
-    <div class="section-pad" style="padding-top: 0; text-align: center;">
-      <div id="confirm-timer" style="font-size: 11px; color: var(--ornate-text-muted);">
-        あと <span id="confirm-seconds">15</span> 秒で開廷準備に入ります…
-      </div>
-      <div id="countdown-display" class="ornate-countdown-number" style="display: none;"></div>
-    </div>
-    {% else %}
-    <!-- 自由形式: 「入廷する」ボタンだと押すタイミングが人によってバラバラになるので、
-         3秒カウントダウンで全員自動的に法廷画面へ切り替える(ゲーム形式と同じ狙い) -->
-    <div class="section-pad" style="padding-top: 0; text-align: center;">
-      <div id="countdown" class="ornate-countdown-number">3</div>
-      <div style="margin-top: 10px; color: var(--ornate-text-muted);">裁判を開始します…</div>
     </div>
     {% endif %}
+
+    <!-- 全員のカウントダウンをサーバーが決めた1つの目標時刻(trial_start_at)に合わせるので、
+         役職に関わらず全員の画面で完全に同じ数字が表示され、同じ瞬間に法廷画面へ切り替わる -->
+    <div class="section-pad" style="padding-top: 32px; text-align: center;">
+      <div id="countdown" class="ornate-countdown-number">-</div>
+      <div id="countdown-caption" style="margin-top: 4px; color: var(--ornate-text-muted); font-size: 12px;">あと<span id="countdown-seconds">-</span>秒で開廷します！</div>
+    </div>
 
   </div>
 </div>
 
-{% if game_mode and case_template %}
 <script>
-  // ゲーム形式だけ: 15秒の確認時間 → 5,4,3,2,1のカウントダウン(音つき) → 0で全員自動的に法廷画面へ。
-  // 今までの「入廷するボタン」だと押すタイミングが人によってバラバラで、被告人の
-  // 発言が聞き取れない人が出ていたので、全員同時に切り替わるようにしている。
+  // 全員の画面で完全に同じカウントダウンにするため、サーバーが決めた1つの目標時刻
+  // (trial_start_atのunixtime)までの残り秒数を、各クライアントがDate.now()との差分で
+  // 計算する。ページの読み込みタイミングが人によって多少ズレても、表示される数字と
+  // 実際に/trialへ切り替わるタイミングは全員そろう。
+  const trialStartAt = {{ trial_start_at|default:"null" }};
+  const targetMs = trialStartAt ? trialStartAt * 1000 : (Date.now() + 3000);
+
   let audioCtx = null;
   function beep(freq, duration) {
     try {
@@ -68,7 +63,7 @@
       osc.frequency.value = freq;
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.22, audioCtx.currentTime);
       osc.start();
       osc.stop(audioCtx.currentTime + duration);
     } catch (err) {
@@ -76,52 +71,44 @@
     }
   }
 
-  let confirmSeconds = 15;
-  const confirmTimerEl = document.getElementById("confirm-timer");
-  const confirmSecondsEl = document.getElementById("confirm-seconds");
-  const countdownDisplay = document.getElementById("countdown-display");
+  const countdownEl = document.getElementById("countdown");
+  const secondsEl = document.getElementById("countdown-seconds");
+  const captionEl = document.getElementById("countdown-caption");
+  let lastShownSecond = null;
+  let navigated = false;
 
-  const confirmInterval = setInterval(() => {
-    confirmSeconds -= 1;
-    confirmSecondsEl.textContent = confirmSeconds;
-    if (confirmSeconds <= 0) {
-      clearInterval(confirmInterval);
-      startCountdown();
-    }
-  }, 1000);
+  function tick() {
+    if (navigated) return;
+    const remainingMs = targetMs - Date.now();
+    const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
 
-  function startCountdown() {
-    confirmTimerEl.style.display = "none";
-    countdownDisplay.style.display = "block";
-    let n = 5;
-    countdownDisplay.textContent = n;
-    beep(880, 0.15);
-    const countdownInterval = setInterval(() => {
-      n -= 1;
-      if (n > 0) {
-        countdownDisplay.textContent = n;
-        beep(880, 0.15);
+    if (remainingSec !== lastShownSecond) {
+      lastShownSecond = remainingSec;
+      if (remainingSec > 0) {
+        countdownEl.textContent = remainingSec;
+        secondsEl.textContent = remainingSec;
+        // 残りが少なくなるほど、追い詰められてる感じを出す(赤み+振動が強くなる)
+        countdownEl.classList.remove("urgent");
+        void countdownEl.offsetWidth;
+        if (remainingSec <= 3) countdownEl.classList.add("urgent");
+        beep(remainingSec <= 3 ? 1046 : 880, 0.15);
       } else {
-        countdownDisplay.textContent = "開廷!";
-        beep(1320, 0.3);
-        clearInterval(countdownInterval);
-        setTimeout(() => { window.location.href = "/trial"; }, 500);
+        countdownEl.textContent = "開廷!";
+        captionEl.textContent = "";
+        countdownEl.classList.add("urgent");
+        beep(1568, 0.35);
       }
-    }, 1000);
-  }
-</script>
-{% else %}
-<script>
-  // 自由形式: シンプルな3秒カウントダウンで全員同時に法廷画面へ切り替える
-  let count = 3;
-  const timer = setInterval(() => {
-    document.getElementById("countdown").textContent = count;
-    if (count <= 0) {
-      clearInterval(timer);
-      window.location.href = "/trial";
     }
-    count--;
-  }, 1000);
+
+    if (remainingMs <= 0) {
+      if (!navigated) {
+        navigated = true;
+        setTimeout(() => { window.location.href = "/trial"; }, 400);
+      }
+      return;
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 </script>
-{% endif %}
 {% endblock %}

@@ -13,7 +13,7 @@
         <div class="brand">
           <i class="ti ti-gavel"></i>
           <img
-            src="{% static 'trial/img/logo.png' %}"
+            src="{% static 'trial/img/logo_tight.png' %}"
             alt="言い訳裁判"
             style="
               height: 22px;
@@ -31,24 +31,23 @@
       <div class="subtitle" id="round-indicator" style="color: var(--danger); font-weight: 600; display: {% if trial_round > 1 %}block{% else %}none{% endif %};">{% if trial_round > 1 %}第{{ trial_round }}審{% endif %}</div>
     </div>
 
-    <!-- 自分の役割を見失わないよう、開廷中ずっと目立つバッジとして表示しておく -->
-    <div class="my-role-banner" id="my-role-banner">
-      <div class="icon-circle accent-{{ role_meta.accent|default:'accent' }}" id="my-role-icon">
-        <i class="ti {{ role_meta.icon|default:'ti-users' }}"></i>
-      </div>
-      <div>
-        <div class="label">あなたの役割</div>
-        <div class="value" id="my-role-label">{{ role_meta.label|default:"傍聴席" }}</div>
-      </div>
-    </div>
-
-    <!-- フェーズタイマー: サーバーが1秒ごとに進行させ、全員の画面に同じ残り時間を配信している -->
+    <!-- フェーズタイマー: サーバーが1秒ごとに進行させ、全員の画面に同じ残り時間を配信している。
+         以前は「あなたの役割」バナー＋検察官/弁護人ガチャ結果の帯を別々に大きく表示していたが、
+         それぞれのフェーズカードの下に担当者名を出す形にまとめて、縦幅を節約している。
+         自分の担当フェーズのカードには.mineクラスが付いて金色に光り、「あなた」バッジが出る -->
     <div class="phase-row">
       {% for ph in phases %}
-      <div class="phase-card {% if ph.active %}active{% endif %}" id="phase-{{ forloop.counter0 }}"
-        data-duration="{{ ph.duration }}">
+      <div class="phase-card {% if ph.active %}active{% endif %} {% if ph.key == my_role %}mine{% endif %}" id="phase-{{ forloop.counter0 }}"
+        data-duration="{{ ph.duration }}" data-phase-role="{{ ph.key }}">
         <div class="phase-label">
           <i class="ti {{ ph.icon }}"></i>{{ ph.label }}
+        </div>
+        <div class="phase-person">
+          {% if ph.key == "defendant" %}{{ defendant_name }}
+          {% elif ph.key == "prosecutor" %}<span id="prosecutor-name">{{ prosecutor.name }}</span>
+          {% elif ph.key == "defense" %}<span id="defense-name">{{ defense.name }}</span>
+          {% endif %}
+          <span class="phase-person-me" id="phase-person-me-{{ forloop.counter0 }}" style="{% if ph.key != my_role %}display: none;{% endif %}">あなた</span>
         </div>
         <div class="phase-time" data-remaining="{{ ph.remaining_seconds }}">{{ ph.time }}</div>
         <div class="phase-bar" {% if not ph.active %}style="visibility: hidden;" {% endif %}>
@@ -63,6 +62,27 @@
       </div>
       {% endfor %}
     </div>
+
+    {% if game_mode and case_template %}
+    <!-- ゲーム形式: お題の詳細を法廷画面でもいつでも確認できるようにしておく。
+         配信映像より上に置く方が目線的に自然、という要望で配信の直前に移動した -->
+    <div class="case-info-box">
+      <div class="case-info-header">
+        <span class="case-info-title">{{ case_template.title }}</span>
+        <span class="case-info-difficulty">難易度：{{ difficulty_label }}</span>
+      </div>
+      <div class="case-info-body">
+        <div class="case-info-row">
+          <span class="case-info-tag charge">罪状</span>
+          <span class="case-info-text">{{ case_template.charge }}</span>
+        </div>
+        <div class="case-info-row">
+          <span class="case-info-tag claim">言い分</span>
+          <span class="case-info-text">{{ case_template.claim }}</span>
+        </div>
+      </div>
+    </div>
+    {% endif %}
 
     <!-- 証拠映像フレーム(被告人カメラ)。被告人の映像+音声は裁判が終わるまでずっと流れ、
          検察質問・弁護士弁護のフェーズ中は、その人の声だけが重なって聞こえる -->
@@ -119,44 +139,6 @@
       </div>
     </div>
 
-    <!-- 検察官・弁護人ガチャ結果（被告人以外の参加者からサーバー側で抽選済み） -->
-    <div class="gacha-row">
-      <div class="gacha-badge">
-        <i class="ti ti-shield-half-filled" style="font-size: 18px; color: var(--danger-dark);"></i>
-        <div>
-          <div class="gacha-label">検察官ガチャ</div>
-          <div class="gacha-name" id="prosecutor-name">{{ prosecutor.name }}</div>
-        </div>
-      </div>
-      <div class="gacha-badge">
-        <i class="ti ti-scale" style="font-size: 18px; color: var(--accent-blue);"></i>
-        <div>
-          <div class="gacha-label">弁護人ガチャ</div>
-          <div class="gacha-name" id="defense-name">{{ defense.name }}</div>
-        </div>
-      </div>
-    </div>
-
-    {% if game_mode and case_template %}
-    <!-- ゲーム形式: お題の詳細を法廷画面でもいつでも確認できるようにしておく -->
-    <div class="case-info-box">
-      <div class="case-info-header">
-        <span class="case-info-title">{{ case_template.title }}</span>
-        <span class="case-info-difficulty">難易度：{{ difficulty_label }}</span>
-      </div>
-      <div class="case-info-body">
-        <div class="case-info-row">
-          <span class="case-info-tag charge">罪状</span>
-          <span class="case-info-text">{{ case_template.charge }}</span>
-        </div>
-        <div class="case-info-row">
-          <span class="case-info-tag claim">言い分</span>
-          <span class="case-info-text">{{ case_template.claim }}</span>
-        </div>
-      </div>
-    </div>
-    {% endif %}
-
     {% if game_mode %}
     <!-- ゲーム形式: 有罪/無罪への賭け。傍聴席だけが自分のウォレットから賭けられる。
          金額は他人には見せず、件数だけを全員にリアルタイム共有する(ブラフ要素) -->
@@ -165,8 +147,21 @@
         賭ける
         {% if my_role == "gallery" %}<span style="font-size: 11px; font-weight: 400;">（所持: <span id="wallet-balance">{{ wallet_balance|default:0 }}</span>p）</span>{% endif %}
       </div>
-      <div style="text-align: center; font-size: 11px; color: var(--text-brown-muted); margin-bottom: 8px;">
-        有罪 <span id="bet-count-guilty">{{ bet_counts.guilty|default:0 }}</span>件　/　無罪 <span id="bet-count-innocent">{{ bet_counts.innocent|default:0 }}</span>件
+      <!-- 賭けの件数表示: 数字が動くたびにパッと光って伸縮する演出をつけて、
+           ブラフの駆け引き感・盛り上がりを出す(bet_countsが更新されるたびupdateBetCountsが
+           betcount-pulseクラスを一瞬付け外しする) -->
+      <div class="bet-count-hype" id="bet-count-hype">
+        <div class="bet-count-side guilty">
+          <i class="ti ti-flame"></i>
+          <span class="bet-count-num" id="bet-count-guilty">{{ bet_counts.guilty|default:0 }}</span>
+          <span class="bet-count-tag">有罪</span>
+        </div>
+        <div class="bet-count-vs">VS</div>
+        <div class="bet-count-side innocent">
+          <span class="bet-count-tag">無罪</span>
+          <span class="bet-count-num" id="bet-count-innocent">{{ bet_counts.innocent|default:0 }}</span>
+          <i class="ti ti-shield-check"></i>
+        </div>
       </div>
       {% if my_role == "gallery" %}
       <div id="betting-controls" style="display: {% if voting_open %}none{% else %}flex{% endif %}; gap: 6px; align-items: center;">
@@ -215,14 +210,21 @@
     </div>
     {% else %}
     <!-- ゲーム形式: 誰でも押せる異議ありスタンプの代わりに、検察官/弁護人だけが使える
-         「異議ありカード」(1裁判1回、相手の持ち時間を20秒奪う)に置き換える -->
-    <div class="objection-btn" id="objection-card-section" style="{% if not is_lawyer %}display: none;{% endif %}">
-      <button id="objection-card-button" onclick="useObjectionCard()" {% if objection_card_used %}disabled{% endif %}
-        style="{% if objection_card_used %}opacity: 0.5;{% endif %}">
-        <i class="ti ti-cards"></i>
-        異議ありカード <span class="count" id="objection-card-status">{% if objection_card_used %}使用済み{% else %}未使用{% endif %}</span>
-      </button>
-    </div>
+         「異議ありカード」(1裁判1回、相手の持ち時間を20秒奪う)に置き換える。
+         画面を圧迫する横長ボタンにはせず、素材をそのまま円形に切り抜いた
+         浮遊ボタンにして、わかりやすい位置(画面右上)に常時置いておく -->
+    <button
+      id="objection-card-button"
+      class="objection-card-fab"
+      onclick="useObjectionCard()"
+      {% if not is_lawyer %}style="display: none;"{% endif %}
+      {% if objection_card_used %}disabled{% endif %}
+    >
+      <img src="{% static 'trial/img/objection_logo.png' %}" alt="異議ありカード" />
+      <span class="fab-used-badge" id="objection-card-status" style="{% if not objection_card_used %}display: none;{% endif %}">
+        <i class="ti ti-check"></i>
+      </span>
+    </button>
     {% endif %}
 
     <!-- 常時表示のコメント欄。ホスト/参加者どちらの画面でも同じで、全員にリアルタイム配信される -->
@@ -265,8 +267,10 @@
       </div>
     </div>
 
-    <!-- 判決: 全フェーズ終了後に投票が開放される -->
-    <div class="verdict-box">
+    <!-- 判決: 裁判中は演出も何も無く場所だけ取ってしまうので、全フェーズが終わって
+         投票が開放されるまでは表示自体をしない。投票が開放された瞬間(phase_ended)に
+         JS側でフェーズインアニメーションをつけて出す(revealVerdictBox参照) -->
+    <div class="verdict-box verdict-final-box" id="final-verdict-box" {% if not voting_open %}style="display: none;"{% endif %}>
       <div class="verdict-title">判決</div>
       <div class="verdict-labels">
         <span>有罪 <span id="guilty-pct">{{ guilty_pct }}</span>%</span><span>無罪 <span id="innocent-pct">{{ innocent_pct}}</span>%</span>
@@ -340,23 +344,18 @@
     if (el) el.textContent = `ログイン中: ${myName}${isHost ? " ・ホスト" : ""}`;
   }
 
-  // ---- 自分の役割バッジ(2審/3審で役職が変わっても常に最新にしておく) ----
-  const ROLE_META_JS = {
-    defendant: { label: "被告人", icon: "ti-user", accent: "danger" },
-    prosecutor: { label: "検察官", icon: "ti-shield-half-filled", accent: "danger" },
-    defense: { label: "弁護人", icon: "ti-scale", accent: "accent" },
-    gallery: { label: "傍聴席", icon: "ti-users", accent: "accent" },
-  };
-
+  // ---- 自分の役割ハイライト(2審/3審で役職が変わっても常に最新にしておく) ----
+  // 以前は専用の「あなたの役割」バナーで表示していたが、今はフェーズカード自体を
+  // 光らせて「あなた」バッジを出す方式にしたので、該当フェーズカードを毎回付け替える
   function updateMyRoleBanner() {
-    const meta = ROLE_META_JS[myRole] || ROLE_META_JS.gallery;
-    const icon = document.getElementById("my-role-icon");
-    const label = document.getElementById("my-role-label");
-    if (icon) {
-      icon.className = "icon-circle accent-" + meta.accent;
-      icon.innerHTML = `<i class="ti ${meta.icon}"></i>`;
-    }
-    if (label) label.textContent = meta.label;
+    document.querySelectorAll(".phase-card").forEach((card) => {
+      const isMine = card.dataset.phaseRole === myRole;
+      card.classList.toggle("mine", isMine);
+    });
+    document.querySelectorAll(".phase-person-me").forEach((badge) => {
+      const card = badge.closest(".phase-card");
+      badge.style.display = (card && card.dataset.phaseRole === myRole) ? "inline-block" : "none";
+    });
   }
 
   function updateRoundIndicator(round) {
@@ -453,9 +452,9 @@
     if (data.role === myRole) {
       objectionCardUsed = true;
       const btn = document.getElementById("objection-card-button");
-      if (btn) { btn.disabled = true; btn.style.opacity = "0.5"; }
+      if (btn) { btn.disabled = true; }
       const status = document.getElementById("objection-card-status");
-      if (status) status.textContent = "使用済み";
+      if (status) status.style.display = "flex";
     }
   });
 
@@ -463,16 +462,15 @@
     console.warn("異議ありカードを使用できませんでした:", data.reason);
   });
 
-  // ---- 異議ありカードの演出: ロゴ画像を使った必殺技風の全画面演出。
-  // 一瞬で消える花火のようなスタンプと違い、そのフェーズが終わるまで表示され続け、
-  // プログレスバーで「短くなった相手の持ち時間」がどれだけ残っているかを見せる。
-  // 残り5秒からは大きなカウントダウン数字に切り替わる ----
-  let objectionEffect = null; // { phaseIndex, duration, layer, progressBar, countdownEl } | null
+  // ---- 異議ありカードの演出: 「異議あり」素材が左からビュン！と飛び込んできて、
+  // 円形の枠に収まる。枠のふちは時計の針みたいに右回りで時間経過を刻んでいき、
+  // 相手の持ち時間(そのフェーズが終わる)と同時にフェードアウトして消える ----
+  let objectionEffect = null; // { phaseIndex, duration, layer, ring, countdownEl } | null
 
   function spawnObjectionCardFlash(data) {
     const screenEl = document.querySelector(".screen");
     if (!screenEl) return;
-    clearObjectionEffect(); // 前の演出が万一残っていたら消してから出す
+    clearObjectionEffect(true); // 前の演出が万一残っていたら、フェード待ちせず即消してから出す
 
     const durationCard = document.querySelectorAll(".phase-card")[data.phase_index];
     const duration = durationCard ? (parseInt(durationCard.dataset.duration, 10) || data.remaining) : data.remaining;
@@ -483,37 +481,47 @@
     const bg = document.createElement("div");
     bg.className = "objection-card-flash";
 
+    const ringWrap = document.createElement("div");
+    ringWrap.className = "objection-card-ring-wrap";
+
+    const swoosh = document.createElement("div");
+    swoosh.className = "objection-card-swoosh";
+
+    const ring = document.createElement("div");
+    ring.className = "objection-card-ring";
+    ring.style.setProperty("--pct", "100");
+
+    const ringInner = document.createElement("div");
+    ringInner.className = "objection-card-ring-inner";
     const logo = document.createElement("img");
-    logo.className = "objection-card-logo";
     logo.src = "{% static 'trial/img/objection_logo.png' %}";
     logo.alt = "異議あり!!";
+    ringInner.appendChild(logo);
+    ring.appendChild(ringInner);
+
+    ringWrap.appendChild(swoosh);
+    ringWrap.appendChild(ring);
 
     const caption = document.createElement("div");
     caption.className = "objection-card-caption";
     caption.textContent = `${data.name}が持ち時間を${data.steal_seconds}秒奪った！`;
 
-    const progressWrap = document.createElement("div");
-    progressWrap.className = "objection-card-progress-wrap";
-    const progressBar = document.createElement("div");
-    progressBar.className = "objection-card-progress-bar";
-    progressWrap.appendChild(progressBar);
-
     const countdownEl = document.createElement("div");
     countdownEl.className = "objection-card-countdown";
 
     layer.appendChild(bg);
-    layer.appendChild(logo);
+    layer.appendChild(ringWrap);
     layer.appendChild(caption);
-    layer.appendChild(progressWrap);
     layer.appendChild(countdownEl);
     screenEl.appendChild(layer);
 
-    objectionEffect = { phaseIndex: data.phase_index, duration, layer, progressBar, countdownEl };
+    objectionEffect = { phaseIndex: data.phase_index, duration, layer, ring, countdownEl };
     updateObjectionEffect(data.phase_index, data.remaining);
   }
 
-  // フェーズの残り時間が更新されるたび(毎秒のphase_tick等)に呼ばれ、
-  // 演出中のプログレスバー/カウントダウンをその時の残り時間に同期させる
+  // フェーズの残り時間が更新されるたび(毎秒のphase_tick等)に呼ばれ、円形の
+  // ふち(conic-gradient)をその時の残り時間に同期させる。ふちが右回りに削れていき、
+  // 0になったらフェードアウトして自動的に消える
   function updateObjectionEffect(phaseIndex, remaining) {
     if (!objectionEffect) return;
     if (phaseIndex !== objectionEffect.phaseIndex || remaining <= 0) {
@@ -521,7 +529,7 @@
       return;
     }
     const pct = Math.max(0, Math.min(100, (remaining / objectionEffect.duration) * 100));
-    objectionEffect.progressBar.style.width = pct + "%";
+    objectionEffect.ring.style.setProperty("--pct", pct);
 
     if (remaining <= 5) {
       objectionEffect.countdownEl.style.display = "block";
@@ -533,20 +541,37 @@
     }
   }
 
-  function clearObjectionEffect() {
+  function clearObjectionEffect(immediate) {
     if (objectionEffect && objectionEffect.layer) {
-      objectionEffect.layer.remove();
+      const layer = objectionEffect.layer;
+      if (immediate) {
+        layer.remove();
+      } else {
+        layer.classList.add("fading");
+        setTimeout(() => layer.remove(), 500);
+      }
     }
     objectionEffect = null;
   }
 
   // ---- ゲーム形式: 賭け(ベット) ----
+  let lastBetCounts = null;
   function updateBetCounts(counts) {
     if (!counts) return;
     const g = document.getElementById("bet-count-guilty");
     const i = document.getElementById("bet-count-innocent");
+    // 前回と数字が変わった側だけ、パッと光って伸びるパルス演出を一瞬つける
+    if (g && lastBetCounts && counts.guilty !== lastBetCounts.guilty) pulseBetSide(g);
+    if (i && lastBetCounts && counts.innocent !== lastBetCounts.innocent) pulseBetSide(i);
     if (g) g.textContent = counts.guilty;
     if (i) i.textContent = counts.innocent;
+    lastBetCounts = { guilty: counts.guilty, innocent: counts.innocent };
+  }
+
+  function pulseBetSide(el) {
+    el.classList.remove("bet-count-pulse");
+    void el.offsetWidth; // 再生し直すためにクラスを一度外す
+    el.classList.add("bet-count-pulse");
   }
 
   function updateWalletBalance(balance) {
@@ -739,17 +764,21 @@
   }
 
   // 緑背景を1フレームずつ透明化する(動画自体にアルファは焼き込まず、都度ピクセル判定する)。
-  // 判定を少し厳しめ(緑が赤・青の2倍以上)にすることで、被写体の縁に残りがちな
-  // 緑のフチをできるだけ減らしている。ただし被写体自体が緑色の衣装などの場合は、
-  // 背景と被写体の緑を区別できず、そこだけ透明になってしまう(色だけで背景を
-  // 判定する方式そのものの限界。背景色と被写体の色が重なるとどうしても起きる)
+  // 「緑が赤・青の2倍以上」という比率判定だと、照明ムラで暗く影が落ちた緑
+  // (例: 緑が赤・青の2倍未満だが緑が最も強い、というくすんだ緑)を拾えず、
+  // 一部の素材(投げ銭動画)で背景が緑のまま残ってしまう不具合があった。
+  // 「緑が赤・青のどちらよりも明確に強い(差が一定以上)」という絶対差の判定に
+  // 変えることで、暗め・くすみ気味の緑背景も含めて拾えるようにしている。
+  // ただし被写体自体が緑色の衣装などの場合は、背景と被写体の緑を区別できず、
+  // そこだけ透明になってしまう(色だけで背景を判定する方式そのものの限界。
+  // 背景色と被写体の色が重なるとどうしても起きる)
   function chromaKeyFrame(ctx, w, h) {
     try {
       const imageData = ctx.getImageData(0, 0, w, h);
       const d = imageData.data;
       for (let i = 0; i < d.length; i += 4) {
         const r = d[i], g = d[i + 1], b = d[i + 2];
-        if (g > 90 && g > r * 2.0 && g > b * 2.0) {
+        if (g > 60 && (g - Math.max(r, b)) > 35) {
           d[i + 3] = 0;
         }
       }
@@ -772,8 +801,8 @@
   document.querySelectorAll(".preset-comment-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       socket.emit("comment_send", { text: btn.dataset.text, name: myName });
-      // 送ったらポップアップは自動で閉じる
-      togglePresetComments();
+      // 連投したい、という要望に合わせて、送信してもポップアップは自動で閉じない。
+      // 閉じるのは本人がトグルボタンをもう一度押したときだけ(togglePresetComments)
     });
   });
 
@@ -949,7 +978,20 @@
   });
 
   // ---- 判決投票 ----
+  // 投票が開放される瞬間に、判決ボックスをフェーズインアニメーション付きで出す。
+  // 既に表示済み(2審/3審で再度呼ばれた場合など)なら何もしない
+  function revealVerdictBox() {
+    const box = document.getElementById("final-verdict-box");
+    if (!box) return;
+    if (box.style.display !== "none") return; // 既に表示済み
+    box.style.display = "block";
+    box.classList.remove("phase-in");
+    void box.offsetWidth;
+    box.classList.add("phase-in");
+  }
+
   function showVoting(votes) {
+    revealVerdictBox();
     document.getElementById("voting-closed-note").style.display = "none";
     // 傍聴席以外(被告人・検察官・弁護人)は自分の裁判に投票できない。
     // ゲーム形式では、賭けた人も自分の得のために投票してしまえるので投票できない

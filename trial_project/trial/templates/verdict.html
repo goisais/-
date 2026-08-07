@@ -18,10 +18,6 @@
       {% endif %}
       <div class="case-name">{{ case_name }}</div>
 
-      {% if outcome == "guilty" and tier == "wanted" %}
-      <div class="wanted-flair">歴史的大犯罪 発覚</div>
-      {% endif %}
-
       {% if outcome == "guilty" and sentence %}
       <div class="sentence-tag {% if tier == 'wanted' %}wanted-tier{% endif %}">
         <i class="ti ti-gavel"></i> {{ sentence }}
@@ -38,6 +34,11 @@
     <div class="collage-frame">
       {% if outcome == "guilty" and face_capture %}
       <canvas id="collage-canvas"></canvas>
+      {% if tier == "wanted" %}
+      <!-- 「歴史的大犯罪発覚」の帯は、テキストの流れではなくポスター画像自体の
+           左上に斜めに貼るスタンプにして、全体のバランスを取っている -->
+      <div class="wanted-flair">歴史的大犯罪<br>発覚</div>
+      {% endif %}
       {% elif outcome == "innocent" %}
       <video id="innocent-video" src="{% static 'trial/video/innocent_reveal.mp4' %}" playsinline style="display: none;"></video>
       <canvas id="innocent-canvas" style="display: none;"></canvas>
@@ -54,12 +55,12 @@
 
     {% if game_mode %}
     <!-- ゲーム形式: 役職者・傍聴席全員を同じ物差しでランキングした結果。
-         同スコアは同順位・同ボーナスポイント(1位10p/2位6p/3位3p/4位以下0p、永続) -->
-    <div class="section-pad" style="padding-bottom: 4px;">
-      <button type="button" id="show-ranking-button" class="btn-primary" style="width: 100%; border: none;" onclick="toggleRanking()">
-        <i class="ti ti-trophy"></i> 今回のランキングを見る
-      </button>
-    </div>
+         同スコアは同順位・同ボーナスポイント(1位10p/2位6p/3位3p/4位以下0p、永続)。
+         「トロフィーだけ表示してればランキングってわかる」ということで、横幅いっぱいの
+         ボタンではなく左下の小さい丸ボタンにした -->
+    <button type="button" id="show-ranking-button" class="ranking-fab" onclick="toggleRanking()" title="今回のランキングを見る">
+      <i class="ti ti-trophy"></i>
+    </button>
     <div id="ranking-panel" class="ornate-note-box" style="display: none; margin: 0 16px 12px; text-align: left;">
       {% for entry in ranking %}
       <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; {% if not forloop.last %}border-bottom: 1px solid rgba(255, 215, 106, 0.15);{% endif %}">
@@ -83,8 +84,8 @@
     </div>
     {% endif %}
 
-    <div class="section-pad">
-      <a href="{% url 'index' %}" class="btn-primary" style="text-decoration: none;">トップに戻る</a>
+    <div class="section-pad" style="text-align: center;">
+      <a href="{% url 'index' %}" class="btn-primary btn-pill" style="text-decoration: none;">トップに戻る</a>
     </div>
 
   </div>
@@ -98,9 +99,9 @@
     if (!panel) return;
     const showing = panel.style.display !== "none";
     panel.style.display = showing ? "none" : "block";
-    if (btn) btn.innerHTML = showing
-      ? '<i class="ti ti-trophy"></i> 今回のランキングを見る'
-      : '<i class="ti ti-trophy"></i> ランキングを閉じる';
+    // トロフィーの丸ボタン自体は据え置きで、開いている間だけ光らせて
+    // 「もう一度押せば閉じる」ことがわかるようにする
+    if (btn) btn.classList.toggle("active", !showing);
   }
 </script>
 {% endif %}

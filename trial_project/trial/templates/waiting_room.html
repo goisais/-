@@ -1,12 +1,20 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}言い訳裁判 - 待機中{% endblock %}
 {% block content %}
 <div class="phone-frame">
-  <div class="screen ornate-theme">
+  <div class="screen ornate-theme setup-screen">
 
-    <div class="ornate-page-header">
-      <span class="ornate-ribbon">WAITING ROOM</span>
-      <div class="ornate-page-title">開廷をお待ちください</div>
+    <!-- 開廷準備(ホスト側)画面と統一感を出すため、同じ仕組み(.setup-center)で
+         縦方向に中央寄せし、参加者一覧の白枠なども.setup-screenのスタイルを
+         そのまま共有する -->
+    <div class="setup-center">
+
+    <div class="waiting-logo-block">
+      <!-- ホスト側の開廷準備画面と同じマーク(丸アイコン)を、同じ位置(ロゴの上)に置いて
+           テイストを揃える -->
+      <div class="ornate-setup-icon"><i class="ti ti-dice-6"></i></div>
+      <img src="{% static 'trial/img/setup_logo_tight.png' %}" alt="開廷準備" />
     </div>
 
     <div class="waiting-center">
@@ -20,7 +28,7 @@
       </div>
     </div>
 
-    <div class="field">
+    <div class="field" style="padding-top: 26px;">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
         <span style="font-size: 10px; letter-spacing: 1px; color: var(--ornate-gold);">入室中の参加者</span>
         <span style="font-size: 11px; color: var(--ornate-text-muted);" id="participant-count">{{ participants|length }}人</span>
@@ -32,10 +40,11 @@
       </div>
     </div>
 
-    <div class="section-pad">
+    <div class="section-pad" style="padding-top: 26px;">
       <div class="ornate-note-box">ホストが「開廷する」を押すと自動で始まります</div>
     </div>
 
+    </div>
   </div>
 </div>
 
