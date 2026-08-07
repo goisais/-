@@ -1101,6 +1101,11 @@ body {
   overflow: hidden;
 }
 
+.verdict-footer{
+    margin-top:auto;
+    padding:18px;
+}
+
 /* ゲーム形式: 賭けの件数表示。地味な「件数だけの文字列」だと盛り上がりに欠けるという
    要望で、対戦カード風の見た目(VSアイコン+大きい数字)にして、件数が動くたびに
    光って伸びるパルス演出をつけている(演出はJS側のpulseBetSideが担当) */
@@ -1411,16 +1416,18 @@ body {
   padding: 12px 18px;
 }
 
-.collage-frame {
-  position: relative;
-  margin: 18px 16px 0;
-  border: 3px solid var(--gold);
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--wood-dark);
+.collage-frame{
+  width:378px;
+  max-width:378px;
+  margin:0 auto;
+  height: 300px;
+  border:2px solid ;
+  border-radius:16px;
+  overflow:hidden;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .collage-frame canvas,
@@ -2587,4 +2594,13 @@ body {
 
 .ornate-theme .case-info-tag.charge {
   background: linear-gradient(160deg, var(--ornate-red-light), var(--ornate-red));
+}
+
+#collage-canvas,
+#innocent-canvas {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: 100%;
 }
