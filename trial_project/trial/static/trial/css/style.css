@@ -129,9 +129,9 @@ body {
   }
 }
 
-/* ゲーム形式: 異議ありカード使用時の全画面演出(ゲームの必殺技風、ロゴ画像を使う)。
-   使用中は消えずに表示され続け、進行状況(効果の残り時間)をプログレスバーで見せ、
-   残り5秒からは大きなカウントダウン数字に切り替わる */
+/* ゲーム形式: 異議ありカード使用時の演出。素材が左からビュン！と飛び込んできて、
+   円形の枠に収まる。枠のふち(conic-gradient)が時計の針のように右回りで
+   経過時間を刻み、相手の持ち時間が尽きると同時にフェードアウトして消える */
 .objection-card-flash-layer {
   position: absolute;
   inset: 0;
@@ -142,28 +142,75 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+
+.objection-card-flash-layer.fading {
+  opacity: 0;
 }
 
 .objection-card-flash {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle, rgba(255, 210, 63, 0.35) 0%, rgba(20, 8, 4, 0.8) 78%);
+  background: radial-gradient(circle, rgba(255, 210, 63, 0.3) 0%, rgba(20, 8, 4, 0.78) 78%);
   animation: card-flash-bg 0.6s ease-out forwards;
 }
 
-.objection-card-logo {
+/* 飛び込んでくる素材本体を包む円形の枠。中身は素材画像+conic-gradientの
+   ふちで、ふちのゴールド部分が残り時間の割合を表す(減っていく=時計回りに削れる) */
+.objection-card-ring-wrap {
   position: relative;
-  width: 84%;
-  max-width: 260px;
-  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.65));
-  transform: scale(0.3) rotate(-10deg);
+  width: 148px;
+  height: 148px;
+  animation: objection-fly-in 0.5s cubic-bezier(0.17, 0.84, 0.44, 1) both;
+}
+
+.objection-card-swoosh {
+  position: absolute;
+  top: 50%;
+  left: -50%;
+  width: 220%;
+  height: 16px;
+  margin-top: -8px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+  filter: blur(1.5px);
   opacity: 0;
-  animation: card-logo-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: swoosh-pass 0.45s ease-out forwards;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.objection-card-ring {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  padding: 6px;
+  background: conic-gradient(var(--gold) calc(var(--pct, 100) * 1%), rgba(255, 255, 255, 0.18) 0);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(0, 0, 0, 0.35);
+  transition: background 0.9s linear;
+}
+
+.objection-card-ring-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #1a0d06;
+  border: 2px solid rgba(0, 0, 0, 0.4);
+}
+
+.objection-card-ring-inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .objection-card-caption {
   position: relative;
-  margin-top: 8px;
+  margin-top: 10px;
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
   font-size: 12px;
@@ -173,26 +220,6 @@ body {
   max-width: 82%;
   opacity: 0;
   animation: card-caption-in 0.4s ease-out 0.3s forwards;
-}
-
-.objection-card-progress-wrap {
-  position: relative;
-  width: 68%;
-  max-width: 220px;
-  margin-top: 12px;
-  height: 9px;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 6px;
-  overflow: hidden;
-  opacity: 0;
-  animation: card-caption-in 0.4s ease-out 0.45s forwards;
-}
-
-.objection-card-progress-bar {
-  height: 100%;
-  width: 100%;
-  background: linear-gradient(90deg, var(--gold), var(--danger));
-  transform-origin: left center;
 }
 
 .objection-card-countdown {
@@ -215,11 +242,17 @@ body {
   100% { opacity: 1; }
 }
 
-@keyframes card-logo-pop {
-  0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
-  55% { transform: scale(1.18) rotate(3deg); opacity: 1; }
-  75% { transform: scale(0.96) rotate(-1deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+@keyframes objection-fly-in {
+  0% { transform: translateX(-170%) rotate(-12deg) scale(0.7); opacity: 0; }
+  55% { transform: translateX(6%) rotate(3deg) scale(1.08); opacity: 1; }
+  78% { transform: translateX(-2%) rotate(-1deg) scale(0.98); }
+  100% { transform: translateX(0) rotate(0deg) scale(1); opacity: 1; }
+}
+
+@keyframes swoosh-pass {
+  0% { transform: translateX(-40%); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateX(60%); opacity: 0; }
 }
 
 @keyframes card-caption-in {
@@ -231,6 +264,60 @@ body {
   0% { transform: scale(1.5); opacity: 0.2; }
   40% { transform: scale(1); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
+}
+
+/* ゲーム形式: 異議ありカードの丸型浮遊ボタン。画面を圧迫する横長ボタンにはせず、
+   素材をそのまま円形に切り抜いたボタンにして、右上の常に見える位置に固定する */
+.objection-card-fab {
+  position: absolute;
+  top: 64px;
+  right: 10px;
+  z-index: 45;
+  width: 50px;
+  height: 50px;
+  padding: 0;
+  border: 3px solid var(--gold);
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  background: #1a0d06;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(0, 0, 0, 0.3);
+  animation: fab-pulse 1.8s ease-in-out infinite;
+}
+
+.objection-card-fab img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.objection-card-fab:disabled {
+  opacity: 0.4;
+  filter: grayscale(0.7);
+  cursor: default;
+  animation: none;
+}
+
+.objection-card-fab .fab-used-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #1a0d06;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  border: 2px solid #1a0d06;
+}
+
+@keyframes fab-pulse {
+  0%, 100% { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(255, 210, 63, 0.5); }
+  50% { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(0, 0, 0, 0.3), 0 0 0 8px rgba(255, 210, 63, 0); }
 }
 
 /* ヘッダー共通 */
@@ -377,6 +464,21 @@ body {
   cursor: pointer;
 }
 
+/* 「横幅いっぱいの平たい四角」ではなく「幅は狭めで背が高い、しっかり押せそうな
+   ボタン」にしたい場面(開廷準備の「抽選して開廷する」、判決画面の「トップに戻る」)
+   で.btn-primaryと組み合わせて使う。同じセレクタ詳細度なので、後に書いた
+   このルールがwidth/padding/border-radiusを上書きする */
+.btn-pill {
+  width: auto;
+  min-width: 220px;
+  max-width: 88%;
+  margin: 0 auto;
+  padding: 15px 30px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
 .option-card {
   width: 100%;
   display: flex;
@@ -439,6 +541,38 @@ body {
 
 .phase-card.active .phase-label {
   color: var(--wood-mid);
+}
+
+/* 各フェーズの担当者名。以前は「あなたの役割」バナー＋検察官/弁護人ガチャ結果を
+   別々の帯で大きく表示していたが、フェーズカードの下にまとめることで縦幅を節約した。
+   自分の担当フェーズには.mineクラスで金色の縁取りと「あなた」バッジをつける */
+.phase-card .phase-person {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--wood-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.phase-card.active .phase-person {
+  color: var(--wood-mid);
+}
+
+.phase-card .phase-person-me {
+  display: inline-block;
+  margin-left: 3px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--gold);
+  color: #3a1505;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.phase-card.mine {
+  box-shadow: 0 0 0 2px var(--gold), 0 0 8px rgba(255, 200, 60, 0.5);
 }
 
 .phase-card .phase-time {
@@ -819,6 +953,16 @@ body {
   padding: 5px 12px;
 }
 
+/* 全フェーズ終了→投票開放の瞬間に、判決ボックスがスッと浮かび上がってくる演出 */
+.verdict-final-box.phase-in {
+  animation: verdict-box-phase-in 0.45s cubic-bezier(0.2, 0.8, 0.3, 1.1) both;
+}
+
+@keyframes verdict-box-phase-in {
+  0% { opacity: 0; transform: scale(0.9) translateY(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 .verdict-box .verdict-title {
   text-align: center;
   font-size: 10px;
@@ -840,6 +984,63 @@ body {
   height: 22px;
   border-radius: 4px;
   overflow: hidden;
+}
+
+/* ゲーム形式: 賭けの件数表示。地味な「件数だけの文字列」だと盛り上がりに欠けるという
+   要望で、対戦カード風の見た目(VSアイコン+大きい数字)にして、件数が動くたびに
+   光って伸びるパルス演出をつけている(演出はJS側のpulseBetSideが担当) */
+.bet-count-hype {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 6px 4px;
+}
+
+.bet-count-side {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.bet-count-side.guilty { color: var(--danger); }
+.bet-count-side.innocent { color: var(--success); }
+
+.bet-count-side i { font-size: 15px; }
+
+.bet-count-num {
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+  min-width: 1.3em;
+  text-align: center;
+}
+
+.bet-count-vs {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-brown-muted);
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bet-count-pulse {
+  animation: bet-count-pulse 0.5s ease-out;
+}
+
+@keyframes bet-count-pulse {
+  0% { transform: scale(1.7); text-shadow: 0 0 12px currentColor; }
+  100% { transform: scale(1); text-shadow: none; }
 }
 
 /* タイマー設定行（ホスト設定画面） */
@@ -913,8 +1114,75 @@ body {
 
 /* 役割発表画面 */
 .reveal-center {
-  padding: 28px 16px 20px;
+  padding: 0 16px 20px;
   text-align: center;
+}
+
+/* 役割発表画面: コンテンツ量が形式(自由/ゲーム)によって変わっても、下に不自然な
+   余白が残らないよう、画面の残り高さいっぱいを使って中身を縦方向に中央寄せする */
+.reveal-screen {
+  display: flex;
+  flex-direction: column;
+}
+
+.reveal-screen .reveal-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  /* 完全な縦中央寄せだと、上の余白と役割説明〜お題の間の余白が連動して
+     ちょうどいいバランスにならなかったので、上は固定の小さい余白にして、
+     役割説明とお題の間により多くの余白を持たせる形に変更した */
+  justify-content: flex-start;
+  padding-top: 36px;
+  min-height: 0;
+}
+
+/* 開廷準備(ゲーム形式)画面: 内容が画面上部に偏って見えていたので、上と同じ仕組みで
+   画面の残り高さを使って縦方向に中央寄せする */
+.setup-screen {
+  display: flex;
+  flex-direction: column;
+}
+
+.setup-screen .setup-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-top: 44px;
+  min-height: 0;
+}
+
+/* 参加者チップの行が画面の縁ギリギリまで来て見切れ気味だったので、内側の余白を
+   広めに取り、文字サイズも少し大きくする(この画面専用にスコープ) */
+.setup-screen .field {
+  padding-left: 30px;
+  padding-right: 30px;
+}
+
+.setup-screen .chip-row {
+  gap: 10px;
+  /* 参加者はこれから増えていく想定なので、まだ人数が少ない段階でも
+     下の案内文が詰まって見えないよう、あらかじめ2行ぶんくらいの高さを確保しておく */
+  min-height: 58px;
+  align-content: flex-start;
+  /* 参加者一覧だとひと目でわかるよう、薄い白枠で囲む */
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.setup-screen .chip {
+  font-size: 13px;
+  padding: 7px 14px 7px 8px;
+}
+
+.setup-screen .field label {
+  font-size: 12px;
+}
+
+.setup-screen #participant-count {
+  font-size: 13px !important;
 }
 
 .reveal-center .pre-label {
@@ -987,6 +1255,7 @@ body {
 .sentence-tag {
   margin: 14px auto 0;
   display: inline-block;
+  text-align: center;
   background: var(--wood-dark);
   color: var(--gold);
   border: 2px solid var(--gold);
@@ -996,17 +1265,27 @@ body {
   font-weight: 600;
 }
 
+/* 「歴史的大犯罪発覚」の帯: 以前はテキストの流れの中で中央寄せに置いていたが、
+   ポスター画像の上に単独で乗っていると全体のバランスが悪いという指摘で、
+   指名手配ポスター(.collage-frame)の左上に、斜めに貼られたスタンプ風で
+   重ねる方式に変更した(.collage-frame側でposition:relativeにして絶対配置) */
 .wanted-flair {
-  margin: 12px auto 0;
-  display: inline-block;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
   color: var(--danger);
+  background: rgba(20, 8, 4, 0.75);
   border: 2px solid var(--danger);
   border-radius: 4px;
-  padding: 3px 10px;
-  font-size: 11px;
+  padding: 4px 8px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 3px;
-  transform: rotate(-3deg);
+  letter-spacing: 2px;
+  line-height: 1.4;
+  text-align: center;
+  transform: rotate(-14deg);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
 }
 
 .sentence-tag.wanted-tier {
@@ -1018,6 +1297,7 @@ body {
 }
 
 .collage-frame {
+  position: relative;
   margin: 18px 16px 0;
   border: 3px solid var(--gold);
   border-radius: 10px;
@@ -1040,6 +1320,32 @@ body {
   text-align: center;
   font-size: 11px;
   color: var(--text-cream-muted);
+}
+
+/* 判決画面: ランキングの丸型浮遊ボタン。トロフィーだけ表示していればランキングだと
+   わかるので、横幅いっぱいのボタンにはせず左下に小さく固定表示する */
+.ranking-fab {
+  position: absolute;
+  bottom: 14px;
+  left: 12px;
+  z-index: 40;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 50%;
+  border: 3px solid var(--gold);
+  background: radial-gradient(circle at 35% 30%, #ffe08a, #b8860b);
+  color: #3a1505;
+  font-size: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(0, 0, 0, 0.3);
+}
+
+.ranking-fab.active {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(0, 0, 0, 0.3), 0 0 0 5px rgba(255, 215, 106, 0.5);
 }
 
 /* ---- 自分の役割バッジ(開廷中、常に目立つ場所に表示する) ---- */
@@ -1252,40 +1558,27 @@ body {
   --ornate-text-muted: #c9a679;
 }
 
+/* 四隅の装飾画像は「浮いて見える、貼り付けただけっぽい」という指摘で撤去した。
+   ただし外枠の金色の使い方自体は好評だったので、左右の縁の飾り(edge_left/right)と
+   上から差し込む金色の光(radial-gradient)は残し、色味のリッチさはキープしている */
 .ornate-theme {
   background-color: var(--ornate-bg-2);
   background-image:
-    url('../img/ornate/corner_tl.png'),
-    url('../img/ornate/corner_tr.png'),
-    url('../img/ornate/corner_bl.png'),
-    url('../img/ornate/corner_br.png'),
     url('../img/ornate/edge_left.png'),
     url('../img/ornate/edge_right.png'),
     radial-gradient(ellipse 140% 55% at 50% -10%, rgba(255, 215, 106, 0.16) 0%, transparent 60%),
     linear-gradient(180deg, var(--ornate-bg-1) 0%, var(--ornate-bg-2) 55%, var(--ornate-bg-3) 100%);
   background-position:
-    top left,
-    top right,
-    bottom left,
-    bottom right,
     left center,
     right center,
     center,
     center;
   background-repeat:
-    no-repeat,
-    no-repeat,
-    no-repeat,
-    no-repeat,
     repeat-y,
     repeat-y,
     no-repeat,
     no-repeat;
   background-size:
-    72px 72px,
-    72px 72px,
-    72px 72px,
-    72px 72px,
     26px auto,
     26px auto,
     auto,
@@ -1311,7 +1604,7 @@ body {
 .ornate-logo-block {
   position: relative;
   text-align: center;
-  padding: 34px 20px 8px;
+  padding: 96px 20px 0;
   overflow: visible;
 }
 
@@ -1330,7 +1623,9 @@ body {
 .ornate-logo-block::after {
   content: "";
   position: absolute;
-  top: -30px;
+  /* 以前はtop:-30pxで、円の上側が画面の外(スクロール領域の外)にはみ出て
+     見えなくなっていた。画面内に収まるよう位置を下げた */
+  top: 26px;
   left: 50%;
   width: 280px;
   height: 280px;
@@ -1353,16 +1648,16 @@ body {
 
 .ornate-logo-block img {
   position: relative;
-  width: 250px;
-  max-width: 85%;
+  width: 300px;
+  max-width: 90%;
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.6));
 }
 
 .ornate-tagline {
   position: relative;
   display: inline-block;
-  margin-top: 12px;
-  padding: 5px 20px;
+  margin-top: 2px;
+  padding: 3px 18px;
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 4px;
@@ -1384,18 +1679,50 @@ body {
 }
 
 .ornate-sub {
-  margin-top: 10px;
+  margin-top: 2px;
   font-size: 10.5px;
   color: var(--ornate-text-muted);
   letter-spacing: 0.5px;
 }
 
-/* 開廷準備 系: 独自ヘッダー（.screen-headerは使わない） */
+/* 開廷準備 系: 独自ヘッダー（.screen-headerは使わない）。以前はborder-bottomと
+   グラデーション背景をつけていたが、画面を縦中央寄せにしたことで上に空きができ、
+   そのグラデーションの継ぎ目が「謎の境界線」に見えてしまっていたので削除した */
 .ornate-setup-header {
   text-align: center;
   padding: 22px 16px 14px;
-  border-bottom: 1px solid rgba(255, 215, 106, 0.3);
-  background: linear-gradient(180deg, rgba(255, 215, 106, 0.08), transparent);
+}
+
+/* 待機画面(参加者側): ホスト側の開廷準備画面と同じ「開廷準備」のロゴ素材＋丸アイコンを
+   同じ配置で使い、見た目のテイストを揃える */
+.waiting-logo-block {
+  text-align: center;
+  padding: 4px 20px 0;
+}
+
+.waiting-logo-block .ornate-setup-icon {
+  margin-bottom: 10px;
+}
+
+.waiting-logo-block img {
+  width: 240px;
+  max-width: 80%;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.6));
+}
+
+.waiting-logo-caption {
+  margin-top: 4px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--ornate-gold-bright);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* 待機画面・開廷準備画面共通: 案内文の枠の横幅を、参加者一覧の白枠と揃える */
+.setup-screen .section-pad {
+  padding-left: 30px;
+  padding-right: 30px;
 }
 
 .ornate-setup-icon {
@@ -1420,11 +1747,19 @@ body {
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
+/* 開廷準備画面(ホスト側): 文字タイトルの代わりに、待機画面と同じロゴ素材を使う */
+.ornate-setup-logo-img {
+  width: 220px;
+  max-width: 78%;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.6));
+}
+
 .ornate-setup-code {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 2px;
   margin-top: 10px;
 }
 
@@ -1443,6 +1778,14 @@ body {
   border: 1px solid var(--ornate-gold-deep);
   border-radius: 6px;
   padding: 3px 10px;
+}
+
+/* ゲーム形式の開廷準備画面: 主催コードをもっと目立たせたい、という要望に合わせて
+   一回り大きく表示する専用サイズ */
+.ornate-setup-code .code-value-lg {
+  font-size: 26px;
+  padding: 4px 16px;
+  letter-spacing: 6px;
 }
 
 .ornate-setup-sub {
@@ -1467,6 +1810,8 @@ body {
 
 .login-page .ornate-theme .field {
   text-align: center;
+  padding-top: 26px;
+  padding-bottom: 0;
 }
 
 .login-page .ornate-theme .field label {
@@ -1556,25 +1901,36 @@ body {
   opacity: 0.45;
 }
 
-/* 開廷方法カード（ログイン画面） */
+/* 開廷方法カード（ログイン画面）: 「自由形式/ゲーム形式」は<button>、「参加者」は
+   <div>で組んでいたため、Safari等では<button>側がネイティブスタイルの影響で
+   横幅がコンテンツにフィットしてしまい、3枚のカードの横幅がバラバラになる不具合が
+   あった。width:100%とappearance:noneで明示的に統一している */
 .ornate-card {
   box-sizing: border-box;
+  width: 100%;
+  max-width: 92%;
+  margin: 0 auto 5px;
   border-radius: 12px;
   border: 2px solid var(--ornate-gold);
-  padding: 16px 14px;
-  margin-bottom: 12px;
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   gap: 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  text-align: left;
 }
 
+/* 「参加者として参加する」カードと同じく、アイコンを左固定にして横並びにする
+   (以前はアイコンが上・文字が下の中央揃えレイアウトだったが、3枚とも同じ並びに揃えた) */
 .ornate-card.mode-classic,
 .ornate-card.mode-game {
-  flex-direction: column;
-  text-align: center;
-  gap: 8px;
-  min-height: 108px;
-  justify-content: center;
+  flex-direction: row;
+  text-align: left;
+  gap: 12px;
+  min-height: 62px;
+  justify-content: flex-start;
 }
 
 .ornate-card.mode-classic {
@@ -1602,7 +1958,7 @@ body {
   border-color: var(--ornate-gold-deep);
   flex-direction: column;
   align-items: stretch;
-  min-height: 108px;
+  min-height: 82px;
   justify-content: center;
 }
 
@@ -1645,10 +2001,10 @@ body {
 }
 
 .ornate-card-desc {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--ornate-text-muted);
-  margin-top: 2px;
-  line-height: 1.4;
+  margin-top: 1px;
+  line-height: 1.3;
 }
 
 .ornate-card.mode-guest .ornate-card-row {
@@ -1783,11 +2139,31 @@ body {
 }
 
 .ornate-countdown-number {
-  margin: 10px 0;
-  font-size: 56px;
+  margin: 6px 0;
+  font-size: 74px;
   font-weight: 900;
+  line-height: 1;
   color: var(--ornate-gold-bright);
   text-shadow: 0 0 20px rgba(255, 215, 106, 0.8), 0 4px 10px rgba(0, 0, 0, 0.6);
+  animation: countdown-pop 0.3s ease-out;
+}
+
+/* 残り3秒を切ったら、追い詰められてる感じを出すため赤く発光させながら震わせる */
+.ornate-countdown-number.urgent {
+  color: #ff5a3c;
+  text-shadow: 0 0 28px rgba(255, 60, 30, 0.95), 0 4px 10px rgba(0, 0, 0, 0.6);
+  animation: countdown-pop 0.3s ease-out, countdown-shake 0.3s ease-in-out;
+}
+
+@keyframes countdown-pop {
+  0% { transform: scale(1.5); opacity: 0.4; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes countdown-shake {
+  0%, 100% { transform: translateX(0) scale(1); }
+  25% { transform: translateX(-4px) scale(1.05); }
+  75% { transform: translateX(4px) scale(1.05); }
 }
 
 /* 判決結果画面 */

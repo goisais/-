@@ -1,17 +1,22 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}言い訳裁判 - 開廷準備(ゲーム形式){% endblock %}
 {% block content %}
 <div class="phone-frame">
-  <div class="screen ornate-theme">
+  <div class="screen ornate-theme setup-screen">
+
+    <!-- 内容量が少なめで画面上部に偏って見えていたので、画面の残り高さいっぱいを
+         使って縦方向に中央寄せする(role_reveal.htmlの.reveal-screenと同じ仕組み) -->
+    <div class="setup-center">
 
     <div class="ornate-setup-header">
+      <!-- 待機画面(参加者側)と統一して、同じ「開廷準備」ロゴ素材を使う -->
       <div class="ornate-setup-icon"><i class="ti ti-dice-6"></i></div>
-      <div class="ornate-setup-title">開廷準備(ゲーム形式)</div>
+      <img src="{% static 'trial/img/setup_logo_tight.png' %}" alt="開廷準備" class="ornate-setup-logo-img" />
       <div class="ornate-setup-code">
         <span class="code-label">主催コード</span>
-        <span class="code-value">{{ access_code }}</span>
+        <span class="code-value code-value-lg">{{ access_code }}</span>
       </div>
-      <div class="ornate-setup-sub">被告人・お題・持ち時間は全部ランダム抽選。参加者が揃ったら抽選するだけ</div>
     </div>
 
     <div class="field">
@@ -21,19 +26,17 @@
       </div>
       <div class="chip-row" id="participant-list">
         {% for p in participants %}
-        <span class="chip chip-muted">{{ p }}</span>
+        <span class="chip {% if p == my_name %}chip-me{% else %}chip-muted{% endif %}">{% if p == my_name %}あなた（{{ p }}）{% else %}{{ p }}{% endif %}</span>
         {% endfor %}
       </div>
       <div id="no-participants" class="helper-text" style="text-align: left; margin-top: 6px; {% if participants %}display:none;{% endif %}">
         まだ誰も参加していません。参加者にログイン画面で名前を入れて「参加者として参加する」を押してもらってください。
       </div>
-      <div style="display: flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 10px; color: var(--text-cream-muted);">
-        <i class="ti ti-dice-5" style="font-size: 13px;"></i>
-        被告人・検察官・弁護人は参加者からランダムで自動決定されます(最低3人推奨)
-      </div>
     </div>
 
-    <div class="field" style="padding-top: 4px;">
+    <!-- 参加者はこれから増えていく想定なので、案内文は参加者リストにくっつけず、
+         あらかじめ一定の間隔をあけて下の方に置いておく -->
+    <div class="field" style="padding-top: 40px;">
       <div style="background: rgba(250, 236, 231, 0.15); border-radius: 8px; padding: 10px 12px; font-size: 11px; color: var(--text-cream-muted); line-height: 1.6;">
         <i class="ti ti-info-circle"></i>
         全フェーズ1分固定・傍聴席は毎裁判10pのベット資金つき・お題はランダム抽選です
@@ -42,20 +45,23 @@
 
     <form action="{% url 'host_setup_game_start' %}" method="post" id="setup-form">
       {% csrf_token %}
-      <div class="section-pad">
-        <button type="submit" class="btn-primary" id="start-btn" {% if not participants %}disabled{% endif %}>
+      <div class="section-pad" style="text-align: center; padding-top: 32px;">
+        <button type="submit" class="btn-primary btn-pill" id="start-btn" {% if not participants %}disabled{% endif %}>
           <i class="ti ti-dice-6" style="font-size: 17px;"></i>
           抽選して開廷する
         </button>
       </div>
     </form>
 
+    </div>
   </div>
 </div>
 
 <script>
   const socket = io();
   socket.emit("join_lobby");
+
+  const myName = "{{ my_name|escapejs }}";
 
   function renderParticipants(list) {
     const container = document.getElementById("participant-list");
@@ -65,8 +71,8 @@
     container.innerHTML = "";
     list.forEach((name) => {
       const chip = document.createElement("span");
-      chip.className = "chip chip-muted";
-      chip.textContent = name;
+      chip.className = "chip " + (name === myName ? "chip-me" : "chip-muted");
+      chip.textContent = name === myName ? `あなた（${name}）` : name;
       container.appendChild(chip);
     });
     emptyNote.style.display = list.length ? "none" : "block";

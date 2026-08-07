@@ -7,9 +7,18 @@
 """
 
 import random
+import threading
 
 def generate_access_code():
     return f"{random.randint(0, 9999):04d}"
+
+
+# phase_remainingは「毎秒減らすバックグラウンドスレッド(sockets.py)」と「異議あり
+# カードで即座に削る socketioイベントハンドラのスレッド」の両方から書き換えられる。
+# ロックなしだと理論上、両者がほぼ同時に読み書きして片方の変更が消える(古い値で
+# 上書きされる)レースコンディションが起きうるので、読み取り→計算→書き込みの
+# 一連の操作をこのロックで守る
+phase_lock = threading.Lock()
 
 
 # ---------- 投げ銭(妨害ギフト)素材 ----------
@@ -209,9 +218,22 @@ CASE_TEMPLATES = [
 
 DIFFICULTY_LABELS = {"easy": "易", "medium": "中", "hard": "難"}
 
+# プレゼン本番用に、お題を1つだけに固定している(ランダム抽選だと毎回話が変わって
+# 実演の練習がしづらいのと、プレゼンは一発勝負でアプリを配布するわけでもないので、
+# ネタが練り込まれた1本に絞った方が面白い)。CASE_TEMPLATESのリスト自体は残してあるので、
+# 本番後にランダム抽選に戻したい場合はpick_random_case_template()を元に戻すだけでいい
+PRESENTATION_CASE_TEMPLATE = {
+    "title": "ゲームに課金した件について",
+    "charge": "親に隠れてスマホゲームに大金を課金した",
+    "situation": "今月のスマホの利用明細を見た親が、課金額の桁を二度見して問い詰めている。",
+    "claim": "あと十連で絶対出ると思ったんです。課金じゃなくて、未来への投資です。ゲーム会社を応援したかっただけだし、正直このキャラがいないと世界が救えなかったんです。",
+    "questions": ["その『十連で出る』計算の根拠は?", "『世界を救う』のとお財布、どっちが大事?"],
+    "difficulty": "medium",
+}
+
 
 def pick_random_case_template():
-    return dict(random.choice(CASE_TEMPLATES))
+    return dict(PRESENTATION_CASE_TEMPLATE)
 
 
 def pick_random_defendant():
@@ -251,6 +273,10 @@ def make_initial_state():
         "ranking": None,  # ゲーム形式の判決確定時に計算される、その裁判のランキング結果
         "objection_card_used": {"prosecutor": False, "defense": False},  # ゲーム形式の異議ありカード(1裁判1回)
         "gift_spend": {"prosecutor": 0, "defense": 0},  # 検察官/弁護人が送った投げ銭の合計(ウォレットが無いので最終スコアから引く)
+        # 役割発表画面のカウントダウンが「全員同時」になるよう、目標時刻(unixtime)を
+        # サーバー側で1つだけ決めて全員に配る。各クライアントはこの時刻までの残り時間を
+        # Date.now()との差分で計算するので、ページ読み込みタイミングがズレても表示は揃う
+        "trial_start_at": None,
     }
 
 
@@ -353,6 +379,12 @@ def start_trial(case_name, defendant):
 
 
 GAME_MODE_PHASE_SECONDS = 60  # ゲーム形式は全フェーズ1分固定(お題の難易度に関わらず)
+
+# 役割発表画面の「全員同時カウントダウン」の長さ(秒)。この秒数だけ未来の時刻を
+# trial_start_atとして全員に配ることで、フェーズタイマーの実際の開始(サーバー側)と
+# 全員が/trialに切り替わる瞬間を一致させる
+REVEAL_SECONDS_CLASSIC = 3
+REVEAL_SECONDS_GAME = 8
 
 
 def start_trial_game_mode(defendant, case_template):
@@ -656,8 +688,13 @@ def use_objection_card(name, role):
     if lobby_state["phase_index"] != target_phase:
         return False, "not_opponent_turn"
 
-    steal = min(OBJECTION_CARD_STEAL_SECONDS, max(0, lobby_state["phase_remaining"] - 1))
-    lobby_state["phase_remaining"] -= steal
+    # 背景のフェーズタイマー(1秒ごとにphase_remainingを減らすスレッド)と競合しないよう、
+    # 「現在の残り時間を読む→削る量を計算する→書き込む」を1つのロックの中で行う。
+    # これをしないと、ちょうど同じタイミングでバックグラウンドスレッドの-1が割り込んで
+    # 上書きされ、削ったはずの秒数が消えてしまうことがある(まれだが再現しうるレース)
+    with phase_lock:
+        steal = min(OBJECTION_CARD_STEAL_SECONDS, max(0, lobby_state["phase_remaining"] - 1))
+        lobby_state["phase_remaining"] -= steal
     used[role] = True
     return True, steal
 
