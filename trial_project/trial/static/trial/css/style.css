@@ -157,6 +157,26 @@ body {
   animation: card-flash-bg 0.6s ease-out forwards;
 }
 
+/* 必殺技を出した時のような、中心から放射状に広がる光線の演出 */
+.objection-card-rays {
+  position: absolute;
+  inset: -20%;
+  background: repeating-conic-gradient(rgba(255, 215, 106, 0.35) 0deg 4deg, transparent 4deg 16deg);
+  animation: objection-rays-spin 1.3s linear both, objection-rays-fade 1.3s ease-out both;
+  pointer-events: none;
+}
+
+@keyframes objection-rays-spin {
+  from { transform: rotate(0deg) scale(0.6); }
+  to { transform: rotate(70deg) scale(1.3); }
+}
+
+@keyframes objection-rays-fade {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* 飛び込んでくる素材本体を包む円形の枠。中身は素材画像+conic-gradientの
    ふちで、ふちのゴールド部分が残り時間の割合を表す(減っていく=時計回りに削れる) */
 .objection-card-ring-wrap {
@@ -208,6 +228,28 @@ body {
   display: block;
 }
 
+/* 対戦ゲームの必殺技名みたいに叩きつけて出てくる大きい文字 */
+.objection-card-bigtext {
+  position: relative;
+  margin-top: 12px;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #fff;
+  background: linear-gradient(180deg, #fff6d8, #ffd76a 45%, #ff5a3c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  animation: objection-bigtext-slam 0.4s cubic-bezier(0.17, 0.84, 0.44, 1) 0.15s both;
+}
+
+@keyframes objection-bigtext-slam {
+  0% { transform: scale(2.4) rotate(-4deg); opacity: 0; }
+  60% { transform: scale(0.92) rotate(1deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
 .objection-card-caption {
   position: relative;
   margin-top: 10px;
@@ -220,6 +262,14 @@ body {
   max-width: 82%;
   opacity: 0;
   animation: card-caption-in 0.4s ease-out 0.3s forwards;
+}
+
+.objection-card-speaker-caption {
+  margin-top: 6px;
+  background: rgba(255, 210, 63, 0.18);
+  border: 1px solid rgba(255, 215, 106, 0.5);
+  color: var(--ornate-gold-bright, #ffd76a);
+  animation: card-caption-in 0.4s ease-out 0.45s forwards;
 }
 
 .objection-card-countdown {
@@ -266,15 +316,29 @@ body {
   100% { transform: scale(1); opacity: 1; }
 }
 
+/* 異議ありカードを使った瞬間、画面全体をガクッと揺らす一瞬の演出 */
+@keyframes objection-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-6px, 3px); }
+  40% { transform: translate(5px, -4px); }
+  60% { transform: translate(-4px, 4px); }
+  80% { transform: translate(4px, -2px); }
+}
+
+.screen.objection-shake {
+  animation: objection-shake 0.4s ease-in-out;
+}
+
 /* ゲーム形式: 異議ありカードの丸型浮遊ボタン。画面を圧迫する横長ボタンにはせず、
-   素材をそのまま円形に切り抜いたボタンにして、右上の常に見える位置に固定する */
+   素材をそのまま円形に切り抜いたボタンにして、配信映像の右上、常にスクロールなしで
+   見える位置に固定する(以前は画面全体に対する絶対配置で下の方に沈んでしまっていた) */
 .objection-card-fab {
   position: absolute;
-  top: 64px;
-  right: 10px;
+  top: 8px;
+  right: 8px;
   z-index: 45;
-  width: 50px;
-  height: 50px;
+  width: 46px;
+  height: 46px;
   padding: 0;
   border: 3px solid var(--gold);
   border-radius: 50%;
@@ -318,6 +382,71 @@ body {
 @keyframes fab-pulse {
   0%, 100% { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(255, 210, 63, 0.5); }
   50% { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(0, 0, 0, 0.3), 0 0 0 8px rgba(255, 210, 63, 0); }
+}
+
+/* 異議ありカード使用中: 派手な演出が終わった後、配信映像の左下(ゲージの上)に
+   残り時間をずっと表示しておくミニカウントダウン。スクロールしなくても
+   常に見える位置に置きたいという要望から、配信映像内の絶対配置にしている */
+.objection-mini-timer {
+  position: absolute;
+  bottom: 54px;
+  left: 8px;
+  z-index: 44;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.objection-mini-ring {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: conic-gradient(var(--gold) calc(var(--pct, 100) * 1%), rgba(255, 255, 255, 0.2) 0);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
+  transition: background 0.9s linear;
+}
+
+.objection-mini-ring::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: rgba(20, 8, 4, 0.88);
+}
+
+.objection-mini-ring span {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 0 8px rgba(255, 210, 63, 0.7);
+}
+
+.objection-mini-timer.urgent .objection-mini-ring span {
+  color: #ff5a3c;
+  text-shadow: 0 0 10px rgba(255, 90, 60, 0.9);
+}
+
+/* ミニタイマーの横に「誰がまだ話しているか」を小さく添えるラベル */
+.objection-mini-label {
+  margin-left: 6px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ヘッダー共通 */
@@ -513,7 +642,7 @@ body {
 
 /* フェーズタイマー */
 .phase-row {
-  margin: 6px 12px 0;
+  margin: 6px 16px 0;
   display: flex;
   gap: 6px;
 }
@@ -618,7 +747,7 @@ body {
 /* 証拠映像フレーム */
 .evidence-frame {
   position: relative;
-  margin: 6px 12px;
+  margin: 14px 16px;
   padding: 5px;
   background: var(--gold);
   border-radius: 10px;
@@ -628,9 +757,9 @@ body {
   position: relative;
   border-radius: 6px;
   overflow: hidden;
-  height: 26vh;
-  max-height: 160px;
-  min-height: 100px;
+  height: 34vh;
+  max-height: 210px;
+  min-height: 130px;
   background: var(--wood-dark);
   border: 1px solid #2c1508;
 }
@@ -686,20 +815,6 @@ body {
   font-weight: 500;
   padding: 3px 8px;
   border-radius: 4px;
-}
-
-.tag-evidence {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  border: 2px solid var(--danger);
-  color: var(--danger);
-  font-size: 10px;
-  font-weight: 500;
-  padding: 2px 6px;
-  border-radius: 3px;
-  transform: rotate(8deg);
-  background: rgba(250, 236, 231, 0.9);
 }
 
 .gauge-row {
@@ -853,7 +968,7 @@ body {
 
 /* 異議ありボタン */
 .objection-btn {
-  margin: 0 12px 6px;
+  margin: 0 16px 6px;
 }
 
 .objection-btn button {
@@ -881,7 +996,7 @@ body {
 
 /* コメント欄 */
 .comment-box {
-  margin: 0 12px 6px;
+  margin: 0 16px 6px;
   background: var(--cream);
   border-left: 3px solid var(--gold);
   border-radius: 0 6px 6px 0;
@@ -946,7 +1061,7 @@ body {
 
 /* 判決 */
 .verdict-box {
-  margin: 0 12px 5px;
+  margin: 0 16px 5px;
   background: var(--cream);
   border: 1px solid var(--wood-dark);
   border-radius: 8px;
@@ -1389,7 +1504,7 @@ body {
 
 /* ---- ゲーム形式: お題詳細ボックス(罪状・言い分) ---- */
 .case-info-box {
-  margin: 6px 12px;
+  margin: 14px 16px;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid rgba(239, 159, 39, 0.4);
@@ -1595,9 +1710,57 @@ body {
   z-index: 0;
 }
 
-.ornate-theme > * {
+/* :not()で除外している要素は自前でposition:absoluteの浮遊レイヤーを持つもの
+   (異議ありスタンプ演出・異議ありカードの丸ボタン・カード使用時のフラッシュ演出)。
+   除外しないと、このルールと詳細度が同じ(クラス1つ)かつ後方定義のせいで
+   position:absoluteがrelativeに上書きされてしまい、画面下部までスクロールしないと
+   見えない位置に流れてしまうバグがあった */
+.ornate-theme > *:not(.objection-fx-layer):not(.objection-card-fab):not(.objection-card-flash-layer):not(.court-open-video-layer):not(.audio-unlock-chip) {
   position: relative;
   z-index: 1;
+}
+
+/* 役割発表画面: カウントダウンが0になった瞬間に挟む動画(音声つき)のフルスクリーン層 */
+.court-open-video-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 96;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.court-open-video-layer video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* タップして音声を有効にする案内チップ(役割発表・法廷画面共通) */
+.audio-unlock-chip {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--ornate-gold-bright);
+  color: var(--ornate-gold-bright);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  animation: audio-unlock-pulse 1.6s ease-in-out infinite;
+  cursor: pointer;
+}
+
+@keyframes audio-unlock-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 215, 106, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 215, 106, 0); }
 }
 
 /* ロゴブロック（ログイン画面） パチンコ・スロット台っぽい電飾演出つき */
@@ -2220,4 +2383,208 @@ body {
 
 .ornate-theme .collage-empty {
   color: var(--ornate-text-muted);
+}
+
+/* ============================================================
+   法廷画面(trial.html)を他の画面と同じ法廷劇場テーマに合わせる。
+   フェーズカード・証拠映像ゲージ・コメント欄・賭け/ギフト/判決ボックスは
+   元々クリーム色の背景で作られていて、この暗い金/赤テーマの上に乗せると
+   「取ってつけた」ような見た目になっていたので、ここでまとめて上書きする。
+   コメント欄は以前、左に太い縁取りをつけた専用の帯(フッター)のような
+   見た目にしていたが、他のカードと同じ丸角・全周の縁取りにして統一した。 */
+.ornate-theme .phase-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--ornate-gold-deep);
+}
+
+/* 今喋っている人のフェーズカードを、みんなにひと目でわかるよう光らせる */
+.ornate-theme .phase-card.active {
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid var(--ornate-gold-bright);
+  animation: phase-active-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes phase-active-glow {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 215, 106, 0.22), 0 0 8px rgba(255, 215, 106, 0.35); }
+  50% { box-shadow: 0 0 0 2px rgba(255, 215, 106, 0.5), 0 0 18px rgba(255, 215, 106, 0.75); }
+}
+
+.ornate-theme .phase-card .phase-label {
+  color: var(--ornate-text-muted);
+}
+
+.ornate-theme .phase-card.active .phase-label {
+  color: var(--ornate-gold-bright);
+}
+
+.ornate-theme .phase-card .phase-person {
+  color: var(--ornate-text-muted);
+}
+
+.ornate-theme .phase-card.active .phase-person {
+  color: var(--ornate-text);
+}
+
+.ornate-theme .phase-card .phase-person-me {
+  background: var(--ornate-gold-bright);
+  color: #3a1505;
+}
+
+.ornate-theme .phase-card.mine {
+  box-shadow: 0 0 0 2px var(--ornate-gold-bright), 0 0 10px rgba(255, 215, 106, 0.5);
+}
+
+.ornate-theme .phase-card .phase-time {
+  color: var(--ornate-text-muted);
+}
+
+.ornate-theme .phase-card.active .phase-time {
+  color: var(--ornate-gold-bright);
+}
+
+.ornate-theme .phase-bar {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.ornate-theme .phase-skip-btn {
+  background: var(--ornate-gold-bright);
+  color: #3a1505;
+}
+
+.ornate-theme .objection-btn button {
+  background: linear-gradient(160deg, var(--ornate-red-light), var(--ornate-red));
+  border: 2px solid var(--ornate-gold-bright);
+  color: var(--ornate-text);
+}
+
+.ornate-theme .objection-btn .count {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* コメント欄: 帯(フッター)っぽさをやめて、他の枠と揃った丸角カードにする */
+.ornate-theme .comment-box {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--ornate-gold-deep);
+  border-radius: 10px;
+}
+
+.ornate-theme .comment-feed .feed-label {
+  color: var(--ornate-text-muted);
+}
+
+.ornate-theme .comment-feed .comment-item {
+  color: var(--ornate-text-muted);
+}
+
+.ornate-theme .comment-feed .comment-item strong {
+  color: var(--ornate-gold-bright);
+}
+
+.ornate-theme .comment-input-row {
+  border-top: 1px solid rgba(255, 215, 106, 0.18);
+}
+
+.ornate-theme .comment-input-row input {
+  background: #241109;
+  border: 1px solid var(--ornate-gold-deep);
+  color: var(--ornate-text);
+}
+
+.ornate-theme .comment-input-row input::placeholder {
+  color: var(--ornate-text-muted);
+}
+
+.ornate-theme .comment-input-row button {
+  background: linear-gradient(160deg, var(--ornate-red-light), var(--ornate-red));
+  color: var(--ornate-text);
+}
+
+.ornate-theme .comment-input-row button.preset-comment-toggle {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--ornate-gold-deep);
+  color: var(--ornate-gold-bright);
+}
+
+.ornate-theme .comment-input-row button.preset-comment-toggle.active {
+  background: var(--ornate-gold-bright);
+  border-color: var(--ornate-gold-bright);
+  color: #3a1505;
+}
+
+.ornate-theme .preset-comment-btn {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--ornate-gold-deep);
+  color: var(--ornate-text);
+}
+
+.ornate-theme .preset-comment-btn:active {
+  background: var(--ornate-gold-bright);
+  color: #3a1505;
+}
+
+.ornate-theme .verdict-box {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--ornate-gold-deep);
+}
+
+.ornate-theme .verdict-box .verdict-title {
+  color: var(--ornate-gold);
+}
+
+.ornate-theme .verdict-box .verdict-labels {
+  color: var(--ornate-text-muted);
+}
+
+.ornate-theme .gift-pick-btn {
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--ornate-gold-deep);
+}
+
+.ornate-theme .gift-pick-btn:active {
+  border-color: var(--ornate-gold-bright);
+}
+
+.ornate-theme .screen-header {
+  background: linear-gradient(180deg, var(--ornate-bg-1), var(--ornate-bg-2));
+  border-bottom: 2px solid var(--ornate-gold-deep);
+}
+
+.ornate-theme .screen-header .brand {
+  color: var(--ornate-text);
+}
+
+.ornate-theme .screen-header .subtitle {
+  color: var(--ornate-text-muted);
+}
+
+/* 法廷画面ヘッダー右上: 今何人入廷しているかのリアルタイム表示 */
+.live-viewers {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ornate-gold-bright);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--ornate-gold-deep);
+  border-radius: 12px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.live-viewers i {
+  font-size: 13px;
+}
+
+.ornate-theme .case-info-header {
+  background: linear-gradient(90deg, var(--ornate-bg-1), #3a1808);
+  border-bottom: 1px solid var(--ornate-gold-deep);
+}
+
+.ornate-theme .case-info-title {
+  color: var(--ornate-gold-bright);
+}
+
+.ornate-theme .case-info-tag.charge {
+  background: linear-gradient(160deg, var(--ornate-red-light), var(--ornate-red));
 }

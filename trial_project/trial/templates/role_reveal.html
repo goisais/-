@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}言い訳裁判 - 役割発表{% endblock %}
 
 {% block content %}
@@ -11,6 +12,14 @@
         ログイン中: {{ my_name }}
       </div>
     </div>
+
+    <!-- ブラウザは「ユーザーの操作なしに音声を自動再生」を基本ブロックするため、
+         待機画面から自動でこの画面に遷移してきた人(特に傍聴席)はタップなしだと
+         カウントダウン音や次の開廷動画の音が鳴らない。ワンタップで音声を解除できる
+         案内チップを出しておき、押されたら(または画面のどこをタップしても)解除する -->
+    <button type="button" class="audio-unlock-chip" id="audio-unlock-chip" onclick="unlockAudio()">
+      <i class="ti ti-volume"></i> タップして音声オン
+    </button>
 
     <div class="reveal-center" id="reveal-center">
       <div class="pre-label">あなたの役割は…</div>
@@ -44,6 +53,12 @@
     </div>
 
   </div>
+
+  <!-- カウントダウンが0になった瞬間、法廷画面に切り替わる前にこの動画(音声つき)を
+       挟んでから/trialへ遷移する。普段は非表示にしておく -->
+  <div class="court-open-video-layer" id="court-open-video-layer" style="display: none;">
+    <video id="court-open-video" src="{% static 'trial/video/effects/court_open.mp4' %}" playsinline></video>
+  </div>
 </div>
 
 <script>
@@ -55,6 +70,31 @@
   const targetMs = trialStartAt ? trialStartAt * 1000 : (Date.now() + 3000);
 
   let audioCtx = null;
+
+  // ---- 音声の自動再生ロック解除 ----
+  // 待機画面からサーバー通知(クリック操作を伴わない画面遷移)でここに来た人は、
+  // ブラウザの自動再生ポリシーによってカウントダウン音や開廷動画の音声が
+  // 鳴らないことがある。画面のどこか一箇所でもタップ/クリックしてもらえれば、
+  // それを合図にAudioContextの再開と動画要素の「再生済み」扱い化を行う
+  function unlockAudio() {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume().catch(() => { });
+    } catch (err) { /* 何もしない */ }
+    const video = document.getElementById("court-open-video");
+    if (video) {
+      video.muted = true;
+      video.play().then(() => {
+        video.pause();
+        video.currentTime = 0;
+        video.muted = false;
+      }).catch(() => { });
+    }
+    const chip = document.getElementById("audio-unlock-chip");
+    if (chip) chip.style.display = "none";
+  }
+  document.addEventListener("pointerdown", unlockAudio, { once: true });
+
   function beep(freq, duration) {
     try {
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -103,12 +143,36 @@
     if (remainingMs <= 0) {
       if (!navigated) {
         navigated = true;
-        setTimeout(() => { window.location.href = "/trial"; }, 400);
+        setTimeout(playCourtOpenVideoThenGo, 400);
       }
       return;
     }
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
+
+  // 開廷!の瞬間に動画(音声つき)を挟んでから法廷画面へ遷移する。
+  // 動画が再生できない/終了イベントが発火しない環境でも進行が止まらないよう、
+  // 動画の長さより少し長めのフォールバックタイマーで必ず遷移させる
+  function playCourtOpenVideoThenGo() {
+    const layer = document.getElementById("court-open-video-layer");
+    const video = document.getElementById("court-open-video");
+    if (!layer || !video) {
+      window.location.href = "/trial";
+      return;
+    }
+    let done = false;
+    const goToTrial = () => {
+      if (done) return;
+      done = true;
+      window.location.href = "/trial";
+    };
+    layer.style.display = "flex";
+    video.currentTime = 0;
+    video.muted = false;
+    video.play().catch(() => { goToTrial(); });
+    video.addEventListener("ended", goToTrial, { once: true });
+    setTimeout(goToTrial, 2500);
+  }
 </script>
 {% endblock %}

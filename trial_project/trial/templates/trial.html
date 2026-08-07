@@ -8,6 +8,13 @@
     <!-- 異議ありスタンプが下から上に流れていくレイヤー(見た目だけなのでクリックは無視する) -->
     <div class="objection-fx-layer" id="objection-fx-layer"></div>
 
+    <!-- 待機画面からの自動遷移でこの画面に来た人は、タップなしだと異議ありカードの
+         効果音がブラウザの自動再生ポリシーでブロックされることがある。案内チップを
+         出しておき、押されたら(または画面のどこをタップしても)音声を解除する -->
+    <button type="button" class="audio-unlock-chip" id="audio-unlock-chip" onclick="unlockAudio()">
+      <i class="ti ti-volume"></i> タップして音声オン
+    </button>
+
     <div class="screen-header">
       <div class="title-row">
         <div class="brand">
@@ -16,11 +23,17 @@
             src="{% static 'trial/img/logo_tight.png' %}"
             alt="言い訳裁判"
             style="
-              height: 22px;
+              height: 34px;
               width: auto;
               display: block;
             "
           >
+        </div>
+        <!-- 今何人この裁判に入廷しているかをリアルタイムで表示する。
+             #viewer-countの中身はparticipant_leftイベント受信時にJS側で更新される -->
+        <div class="live-viewers">
+          <i class="ti ti-eye"></i>
+          <span id="viewer-count">{{ viewer_count }}</span>
         </div>
       </div>
       <div class="subtitle">{{ case_name }}</div>
@@ -76,10 +89,6 @@
           <span class="case-info-tag charge">罪状</span>
           <span class="case-info-text">{{ case_template.charge }}</span>
         </div>
-        <div class="case-info-row">
-          <span class="case-info-tag claim">言い分</span>
-          <span class="case-info-text">{{ case_template.claim }}</span>
-        </div>
       </div>
     </div>
     {% endif %}
@@ -102,7 +111,6 @@
         {% endif %}
 
         <div class="tag-defendant">被告人：{{ defendant_name }}</div>
-        <div class="tag-evidence" id="speaking-tag" style="display: none;">発言中</div>
 
         <!-- ニコニコ動画風、コメントが右から左に流れていく演出用のレイヤー(自由形式・ゲーム形式共通) -->
         <div class="comment-fly-layer" id="comment-fly-layer"></div>
@@ -116,6 +124,31 @@
             <div class="speaker-indicator-role" id="speaker-indicator-role"></div>
             <div class="speaker-indicator-name" id="speaker-indicator-name"></div>
           </div>
+        </div>
+        {% endif %}
+
+        {% if game_mode %}
+        <!-- ゲーム形式: 異議ありカード(検察官/弁護人だけ)。以前は画面下部の独立ボタンだったが
+             わかりにくい位置という指摘を受けて、常に見える配信映像の右上に移動した。
+             使用中は左下(ゲージの上)にミニ残り時間カウントダウンを出し、スクロールせずに
+             残り時間が見えるようにする -->
+        <button
+          id="objection-card-button"
+          class="objection-card-fab"
+          onclick="useObjectionCard()"
+          {% if not is_lawyer %}style="display: none;"{% endif %}
+          {% if objection_card_used %}disabled{% endif %}
+        >
+          <img src="{% static 'trial/img/objection_logo.png' %}" alt="異議ありカード" />
+          <span class="fab-used-badge" id="objection-card-status" style="{% if not objection_card_used %}display: none;{% endif %}">
+            <i class="ti ti-check"></i>
+          </span>
+        </button>
+        <div class="objection-mini-timer" id="objection-mini-timer" style="display: none;">
+          <div class="objection-mini-ring" id="objection-mini-ring">
+            <span id="objection-mini-seconds">0</span>
+          </div>
+          <div class="objection-mini-label" id="objection-mini-label"></div>
         </div>
         {% endif %}
 
@@ -165,13 +198,13 @@
       </div>
       {% if my_role == "gallery" %}
       <div id="betting-controls" style="display: {% if voting_open %}none{% else %}flex{% endif %}; gap: 6px; align-items: center;">
-        <input type="number" id="bet-amount-input" min="1" value="1" style="width: 54px; border: 1px solid var(--wood-dark); border-radius: 6px; padding: 7px 6px; font-size: 13px; text-align: center;" />
+        <input type="number" id="bet-amount-input" min="1" value="1" style="width: 54px; background: #241109; border: 1px solid var(--ornate-gold-deep); color: var(--ornate-text); border-radius: 6px; padding: 7px 6px; font-size: 13px; text-align: center;" />
         <button onclick="placeBet('guilty')"
-          style="flex: 1; background: var(--danger); color: var(--on-danger); border: none; border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 500;">有罪に賭ける</button>
+          style="flex: 1; background: linear-gradient(160deg, var(--ornate-red-light), var(--ornate-red)); color: var(--ornate-text); border: 2px solid var(--ornate-gold-bright); border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 500;">有罪に賭ける</button>
         <button onclick="placeBet('innocent')"
-          style="flex: 1; background: var(--success); color: #fff; border: none; border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 500;">無罪に賭ける</button>
+          style="flex: 1; background: linear-gradient(160deg, #4d8a1a, #2e5610); color: var(--ornate-text); border: 2px solid var(--ornate-gold-bright); border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 500;">無罪に賭ける</button>
       </div>
-      <div id="betting-closed-note" style="display: {% if voting_open %}block{% else %}none{% endif %}; text-align: center; font-size: 11px; color: var(--text-brown-muted); margin-top: 6px;">
+      <div id="betting-closed-note" style="display: {% if voting_open %}block{% else %}none{% endif %}; text-align: center; font-size: 11px; color: var(--ornate-text-muted); margin-top: 6px;">
         投票が始まったので、賭けは締め切りました
       </div>
       <div id="bet-result-note" style="text-align: center; font-size: 11px; margin-top: 6px;"></div>
@@ -187,7 +220,7 @@
     <div class="verdict-box" id="gift-box" style="margin-top: 10px;">
       <div class="verdict-title">
         妨害ギフトを送る<span style="font-size: 11px; font-weight: 400;">（1回{{ gift_cost }}p）</span>
-        {% if is_lawyer %}<span id="gift-spend-note" style="font-size: 10px; font-weight: 400; color: var(--text-brown-muted);">（自分のスコアから-<span id="gift-spend-value">{{ gift_spend }}</span>p）</span>{% endif %}
+        {% if is_lawyer %}<span id="gift-spend-note" style="font-size: 10px; font-weight: 400; color: var(--ornate-text-muted);">（自分のスコアから-<span id="gift-spend-value">{{ gift_spend }}</span>p）</span>{% endif %}
       </div>
       <div class="gift-picker-row" id="gift-picker-row" style="display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 6px;">
         {% for i, thumb in gift_options %}
@@ -208,23 +241,6 @@
         異議あり！ <span class="count" id="objection-count">{{ objection_count }}</span>
       </button>
     </div>
-    {% else %}
-    <!-- ゲーム形式: 誰でも押せる異議ありスタンプの代わりに、検察官/弁護人だけが使える
-         「異議ありカード」(1裁判1回、相手の持ち時間を20秒奪う)に置き換える。
-         画面を圧迫する横長ボタンにはせず、素材をそのまま円形に切り抜いた
-         浮遊ボタンにして、わかりやすい位置(画面右上)に常時置いておく -->
-    <button
-      id="objection-card-button"
-      class="objection-card-fab"
-      onclick="useObjectionCard()"
-      {% if not is_lawyer %}style="display: none;"{% endif %}
-      {% if objection_card_used %}disabled{% endif %}
-    >
-      <img src="{% static 'trial/img/objection_logo.png' %}" alt="異議ありカード" />
-      <span class="fab-used-badge" id="objection-card-status" style="{% if not objection_card_used %}display: none;{% endif %}">
-        <i class="ti ti-check"></i>
-      </span>
-    </button>
     {% endif %}
 
     <!-- 常時表示のコメント欄。ホスト/参加者どちらの画面でも同じで、全員にリアルタイム配信される -->
@@ -276,36 +292,36 @@
         <span>有罪 <span id="guilty-pct">{{ guilty_pct }}</span>%</span><span>無罪 <span id="innocent-pct">{{ innocent_pct}}</span>%</span>
       </div>
       <div class="verdict-bar">
-        <div id="guilty-bar" style="width: {{ guilty_pct }}%; background: var(--danger);"></div>
-        <div id="innocent-bar" style="width: {{ innocent_pct }}%; background: var(--success);"></div>
+        <div id="guilty-bar" style="width: {{ guilty_pct }}%; background: var(--ornate-red-light);"></div>
+        <div id="innocent-bar" style="width: {{ innocent_pct }}%; background: #4d8a1a;"></div>
       </div>
       <div id="voting-buttons"
         style="display: {% if voting_open %}flex{% else %}none{% endif %}; gap: 8px; margin-top: 10px;">
         <button onclick="castVote('guilty')"
-          style="flex: 1; background: var(--danger); color: var(--on-danger); border: none; border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">有罪に投票</button>
+          style="flex: 1; background: linear-gradient(160deg, var(--ornate-red-light), var(--ornate-red)); color: var(--ornate-text); border: 2px solid var(--ornate-gold-bright); border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">有罪に投票</button>
         <button onclick="castVote('innocent')"
-          style="flex: 1; background: var(--success); color: #fff; border: none; border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">無罪に投票</button>
+          style="flex: 1; background: linear-gradient(160deg, #4d8a1a, #2e5610); color: var(--ornate-text); border: 2px solid var(--ornate-gold-bright); border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">無罪に投票</button>
       </div>
       <div id="voting-closed-note"
-        style="text-align: center; font-size: 11px; color: var(--text-brown-muted); margin-top: 8px; display: {% if voting_open %}none{% else %}block{% endif %};">
+        style="text-align: center; font-size: 11px; color: var(--ornate-text-muted); margin-top: 8px; display: {% if voting_open %}none{% else %}block{% endif %};">
         全フェーズが終わると投票できます
       </div>
       <!-- 同数(引き分け)になったときのお知らせ。3審同数のときは裁判長発表にも使う -->
-      <div id="tie-banner" style="display: none; text-align: center; font-size: 12px; color: var(--wood-dark); margin-top: 8px; font-weight: 600;"></div>
+      <div id="tie-banner" style="display: none; text-align: center; font-size: 12px; color: var(--ornate-gold-bright); margin-top: 8px; font-weight: 600;"></div>
 
       <!-- 裁判長役に選ばれた本人だけに出る、強制判決の2択ボタン -->
       <div id="judge-decide-buttons" style="display: none; gap: 8px; margin-top: 10px;">
-        <button onclick="judgeDecide('guilty')" style="flex: 1; background: var(--danger); color: var(--on-danger); border: none; border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">有罪と判決する</button>
-        <button onclick="judgeDecide('innocent')" style="flex: 1; background: var(--success); color: #fff; border: none; border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">無罪と判決する</button>
+        <button onclick="judgeDecide('guilty')" style="flex: 1; background: linear-gradient(160deg, var(--ornate-red-light), var(--ornate-red)); color: var(--ornate-text); border: 2px solid var(--ornate-gold-bright); border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">有罪と判決する</button>
+        <button onclick="judgeDecide('innocent')" style="flex: 1; background: linear-gradient(160deg, #4d8a1a, #2e5610); color: var(--ornate-text); border: 2px solid var(--ornate-gold-bright); border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 500;">無罪と判決する</button>
       </div>
 
       {% if is_host %}
       <button id="finalize-verdict-button" onclick="finalizeVerdict()"
-        style="display: {% if voting_open %}block{% else %}none{% endif %}; width: 100%; margin-top: 10px; background: var(--wood-dark); color: #fff; border: none; border-radius: 6px; padding: 10px; font-size: 13px; font-weight: 600;">
+        style="display: {% if voting_open %}block{% else %}none{% endif %}; width: 100%; margin-top: 10px; background: rgba(0, 0, 0, 0.35); color: var(--ornate-gold-bright); border: 2px solid var(--ornate-gold-bright); border-radius: 6px; padding: 10px; font-size: 13px; font-weight: 600;">
         判決を確定する（ホスト操作）
       </button>
       <!-- 同数だったとき、ホストだけがここを押して次の審(2審/3審)に進める -->
-      <button id="next-round-button" onclick="startNextRound()" style="display: none; width: 100%; margin-top: 10px; background: var(--danger-dark); color: #fff; border: none; border-radius: 6px; padding: 10px; font-size: 13px; font-weight: 600;">
+      <button id="next-round-button" onclick="startNextRound()" style="display: none; width: 100%; margin-top: 10px; background: linear-gradient(160deg, var(--ornate-red-light), var(--ornate-red)); color: var(--ornate-text); border: 2px solid var(--ornate-gold-bright); border-radius: 6px; padding: 10px; font-size: 13px; font-weight: 600;">
         次の審に進む（ホスト操作）
       </button>
       {% endif %}
@@ -313,7 +329,7 @@
 
     <!-- 傍聴席(役割なし)の人だけが押せる退出ボタン。被告人・検察官・弁護人・ホストは
          裁判が終わるまで抜けられない -->
-    <button id="leave-trial-button" onclick="leaveTrial()" style="display: {% if my_role == 'gallery' and not is_host %}block{% else %}none{% endif %}; width: 100%; margin-top: 10px; background: transparent; color: var(--text-brown-muted); border: 1px solid var(--text-brown-muted); border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 500;">
+    <button id="leave-trial-button" onclick="leaveTrial()" style="display: {% if my_role == 'gallery' and not is_host %}block{% else %}none{% endif %}; width: calc(100% - 32px); margin: 10px 16px 0; background: transparent; color: var(--ornate-text-muted); border: 1px solid var(--ornate-gold-deep); border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 500;">
       <i class="ti ti-door-exit"></i> 退出する
     </button>
 
@@ -462,24 +478,49 @@
     console.warn("異議ありカードを使用できませんでした:", data.reason);
   });
 
-  // ---- 異議ありカードの演出: 「異議あり」素材が左からビュン！と飛び込んできて、
-  // 円形の枠に収まる。枠のふちは時計の針みたいに右回りで時間経過を刻んでいき、
-  // 相手の持ち時間(そのフェーズが終わる)と同時にフェードアウトして消える ----
-  let objectionEffect = null; // { phaseIndex, duration, layer, ring, countdownEl } | null
+  // ---- 異議ありカードの演出 ----
+  // 最初の一瞬だけ画面全体に「異議あり」素材が飛び込んでくる派手な演出を出し、
+  // それが終わったら配信映像の左下に小さな残り時間リング(ミニタイマー)を
+  // フェーズが終わるまで出し続ける。以前は円形演出そのものを残り時間ぶん
+  // ずっと画面全体に出し続けていて、スクロールしないと見えない位置に
+  // 埋もれてしまっていたので、「一瞬の演出」と「常に見えるミニ表示」に分けた
+  let miniTimerState = null; // { phaseIndex, startRemaining, stealSeconds } | null
+  const OBJECTION_INTRO_MS = 1300;
+
+  // フェーズカードの担当者名から、今喋っている人の名前を取り出す
+  // (異議ありカードを使われても、まだ持ち時間が残っている限りこの人が話し続けている)
+  function getPhaseSpeakerName(phaseIndex) {
+    const card = document.querySelectorAll(".phase-card")[phaseIndex];
+    if (!card) return "";
+    const role = card.dataset.phaseRole;
+    if (role === "defendant") return "{{ defendant_name|escapejs }}";
+    if (role === "prosecutor") {
+      const el = document.getElementById("prosecutor-name");
+      return el ? el.textContent.trim() : "検察官";
+    }
+    if (role === "defense") {
+      const el = document.getElementById("defense-name");
+      return el ? el.textContent.trim() : "弁護人";
+    }
+    return "";
+  }
 
   function spawnObjectionCardFlash(data) {
     const screenEl = document.querySelector(".screen");
     if (!screenEl) return;
     clearObjectionEffect(true); // 前の演出が万一残っていたら、フェード待ちせず即消してから出す
 
-    const durationCard = document.querySelectorAll(".phase-card")[data.phase_index];
-    const duration = durationCard ? (parseInt(durationCard.dataset.duration, 10) || data.remaining) : data.remaining;
+    const speakerName = getPhaseSpeakerName(data.phase_index);
 
     const layer = document.createElement("div");
     layer.className = "objection-card-flash-layer";
 
     const bg = document.createElement("div");
     bg.className = "objection-card-flash";
+
+    // 必殺技を出した時みたいに、中心から放射状の光線がバッと広がる演出
+    const rays = document.createElement("div");
+    rays.className = "objection-card-rays";
 
     const ringWrap = document.createElement("div");
     ringWrap.className = "objection-card-ring-wrap";
@@ -502,57 +543,129 @@
     ringWrap.appendChild(swoosh);
     ringWrap.appendChild(ring);
 
+    // 対戦ゲームの必殺技名みたいに、大きい文字が叩きつけるように出てくる
+    const bigText = document.createElement("div");
+    bigText.className = "objection-card-bigtext";
+    bigText.textContent = "異議あり！！";
+
     const caption = document.createElement("div");
     caption.className = "objection-card-caption";
     caption.textContent = `${data.name}が持ち時間を${data.steal_seconds}秒奪った！`;
 
-    const countdownEl = document.createElement("div");
-    countdownEl.className = "objection-card-countdown";
+    // 誰が異議ありカードを使ったかだけでなく、まだ話す権利がある人が誰かも
+    // 一緒に出しておく(混乱しないように)
+    const speakerCaption = document.createElement("div");
+    speakerCaption.className = "objection-card-caption objection-card-speaker-caption";
+    if (speakerName) speakerCaption.textContent = `今${speakerName}が喋っています`;
 
     layer.appendChild(bg);
+    layer.appendChild(rays);
     layer.appendChild(ringWrap);
+    layer.appendChild(bigText);
     layer.appendChild(caption);
-    layer.appendChild(countdownEl);
+    if (speakerName) layer.appendChild(speakerCaption);
     screenEl.appendChild(layer);
 
-    objectionEffect = { phaseIndex: data.phase_index, duration, layer, ring, countdownEl };
+    shakeScreen();
+    playObjectionSound();
+
+    // 派手な演出は一瞬だけ(OBJECTION_INTRO_MS)出したらフェードアウトして消す。
+    // フェーズの残り時間ぶんずっと出し続けるのはミニタイマー側の役目
+    setTimeout(() => {
+      layer.classList.add("fading");
+      setTimeout(() => layer.remove(), 500);
+    }, OBJECTION_INTRO_MS);
+
+    // ミニタイマーは「奪った20秒」そのものを数える(そのフェーズの残り時間全体では
+    // ない)。前回は残り時間全体の割合で表示していたため、20秒のはずが30秒くらいに
+    // 見えるズレが出ていたので、盗んだ時点の残り時間を基準に経過秒数を計算する方式に変更
+    miniTimerState = { phaseIndex: data.phase_index, startRemaining: data.remaining, stealSeconds: data.steal_seconds };
+    const miniTimer = document.getElementById("objection-mini-timer");
+    const miniLabel = document.getElementById("objection-mini-label");
+    if (miniLabel) miniLabel.textContent = speakerName ? `${speakerName}が発言中` : "";
+    if (miniTimer) miniTimer.style.display = "flex";
     updateObjectionEffect(data.phase_index, data.remaining);
   }
 
-  // フェーズの残り時間が更新されるたび(毎秒のphase_tick等)に呼ばれ、円形の
-  // ふち(conic-gradient)をその時の残り時間に同期させる。ふちが右回りに削れていき、
-  // 0になったらフェードアウトして自動的に消える
+  // フェーズの残り時間が更新されるたび(毎秒のphase_tick等)に呼ばれ、配信映像
+  // 左下のミニタイマーの円形リング(conic-gradient)を「奪った時間(steal_seconds)」の
+  // 経過に同期させる。0になったら(またはフェーズが切り替わったら)消える
   function updateObjectionEffect(phaseIndex, remaining) {
-    if (!objectionEffect) return;
-    if (phaseIndex !== objectionEffect.phaseIndex || remaining <= 0) {
-      clearObjectionEffect();
+    if (!miniTimerState) return;
+    const miniTimer = document.getElementById("objection-mini-timer");
+    if (phaseIndex !== miniTimerState.phaseIndex) {
+      miniTimerState = null;
+      if (miniTimer) miniTimer.style.display = "none";
       return;
     }
-    const pct = Math.max(0, Math.min(100, (remaining / objectionEffect.duration) * 100));
-    objectionEffect.ring.style.setProperty("--pct", pct);
-
-    if (remaining <= 5) {
-      objectionEffect.countdownEl.style.display = "block";
-      objectionEffect.countdownEl.textContent = remaining;
-      objectionEffect.countdownEl.classList.remove("pulse");
-      // クラスを一度外して付け直すことで、毎秒アニメーションを再生させる
-      void objectionEffect.countdownEl.offsetWidth;
-      objectionEffect.countdownEl.classList.add("pulse");
+    const elapsed = miniTimerState.startRemaining - remaining;
+    const left = Math.max(0, miniTimerState.stealSeconds - elapsed);
+    if (left <= 0 || remaining <= 0) {
+      miniTimerState = null;
+      if (miniTimer) miniTimer.style.display = "none";
+      return;
     }
+    const pct = Math.max(0, Math.min(100, (left / miniTimerState.stealSeconds) * 100));
+    const ring = document.getElementById("objection-mini-ring");
+    const secondsEl = document.getElementById("objection-mini-seconds");
+    if (ring) ring.style.setProperty("--pct", pct);
+    if (secondsEl) secondsEl.textContent = left;
+    if (miniTimer) miniTimer.classList.toggle("urgent", left <= 5);
   }
 
   function clearObjectionEffect(immediate) {
-    if (objectionEffect && objectionEffect.layer) {
-      const layer = objectionEffect.layer;
+    document.querySelectorAll(".objection-card-flash-layer").forEach((layer) => {
       if (immediate) {
         layer.remove();
       } else {
         layer.classList.add("fading");
         setTimeout(() => layer.remove(), 500);
       }
-    }
-    objectionEffect = null;
+    });
   }
+
+  // 必殺技を出した時みたいに、画面全体をガクッと揺らす一瞬の演出
+  function shakeScreen() {
+    const screenEl = document.querySelector(".screen");
+    if (!screenEl) return;
+    screenEl.classList.remove("objection-shake");
+    void screenEl.offsetWidth;
+    screenEl.classList.add("objection-shake");
+    setTimeout(() => screenEl.classList.remove("objection-shake"), 450);
+  }
+
+  // 異議ありカードを使った瞬間の効果音
+  let objectionAudio = null;
+  function playObjectionSound() {
+    try {
+      objectionAudio = objectionAudio || new Audio("{% static 'trial/audio/objection.mp3' %}");
+      objectionAudio.currentTime = 0;
+      objectionAudio.play().catch(() => { });
+    } catch (err) {
+      console.error("異議あり効果音を再生できませんでした", err);
+    }
+  }
+
+  // ---- 音声の自動再生ロック解除 ----
+  // 待機画面からサーバー通知(クリック操作を伴わない画面遷移)でここに来た人は、
+  // ブラウザの自動再生ポリシーによって異議ありカードの効果音が鳴らないことがある。
+  // 画面のどこか一箇所でもタップ/クリックしてもらえれば、それを合図に効果音用の
+  // Audio要素を一度無音で再生しておき(「再生済み」扱いにする)、以降のplay()を通す
+  function unlockAudio() {
+    try {
+      objectionAudio = objectionAudio || new Audio("{% static 'trial/audio/objection.mp3' %}");
+      const originalVolume = objectionAudio.volume;
+      objectionAudio.volume = 0;
+      objectionAudio.play().then(() => {
+        objectionAudio.pause();
+        objectionAudio.currentTime = 0;
+        objectionAudio.volume = originalVolume;
+      }).catch(() => { });
+    } catch (err) { /* 何もしない */ }
+    const chip = document.getElementById("audio-unlock-chip");
+    if (chip) chip.style.display = "none";
+  }
+  document.addEventListener("pointerdown", unlockAudio, { once: true });
 
   // ---- ゲーム形式: 賭け(ベット) ----
   let lastBetCounts = null;
@@ -903,6 +1016,26 @@
     updateSkipButtonVisibility(phaseIndex);
     updateSpeakerIndicatorForPhase(phaseIndex);
     updateObjectionEffect(phaseIndex, remaining);
+    applyLocalAudioMuting(phaseIndex);
+  }
+
+  // ---- 視聴側の自動ミュート ----
+  // 被告人はずっと(全フェーズ)映像+音声を配信し続けているが、検察質問・弁護士弁護の
+  // フェーズ中まで被告人の声が聞こえ続けると、その時話しているはずの検察官/弁護人の
+  // 声(speaker-audio)と重なって聞き取りづらくなる。視聴側では今アクティブなフェーズの
+  // 担当者の声だけが聞こえるよう、対象外の音声トラックをその場でミュートする
+  // (映像はそのまま見えるので、被告人の表情の変化などはフェーズが変わっても見える)
+  function applyLocalAudioMuting(phaseIndex) {
+    const defendantVideo = document.getElementById("defendant-video");
+    if (defendantVideo) {
+      // 被告人本人のプレビューはハウリング防止で常にmuted、それ以外は
+      // 被告人陳述フェーズ(0)以外を自動ミュートする
+      defendantVideo.muted = (myRole === "defendant") ? true : (phaseIndex !== 0);
+    }
+    const speakerAudio = document.getElementById("speaker-audio");
+    if (speakerAudio) {
+      speakerAudio.muted = (phaseIndex !== 1 && phaseIndex !== 2);
+    }
   }
 
   // ---- 早送り(話し終わった本人だけ、自分のフェーズを早送りできる) ----
@@ -1249,16 +1382,6 @@
       const audioEl = document.getElementById("speaker-audio");
       audioEl.srcObject = stream;
       audioEl.play().catch(() => { });
-      const tag = document.getElementById("speaking-tag");
-      tag.textContent = (peer ? peer.name : "発言者") + " 発言中";
-      tag.style.display = "block";
-    }
-  }
-
-  function hideIncomingStreamIfFrom(sid) {
-    const peer = knownPeers[sid];
-    if (peer && peer.role !== "defendant") {
-      document.getElementById("speaking-tag").style.display = "none";
     }
   }
 
@@ -1321,7 +1444,6 @@
     if (incomingConnections[data.sid]) {
       incomingConnections[data.sid].close();
       delete incomingConnections[data.sid];
-      hideIncomingStreamIfFrom(data.sid);
     }
   });
 
@@ -1361,6 +1483,8 @@
 
   // ページを開いた時点で、既に自分の担当フェーズ中なら配信を始める
   applyBroadcastRules();
+  // 映像/音声要素にストリームが届く前でも、ミュート状態だけは最初から正しくしておく
+  applyLocalAudioMuting(currentPhaseIndex);
 
   // ---- 罰ゲーム用: 被告人の顔切り抜きキャプチャ ----
   // face-api.js(ブラウザ上で動く軽量な顔検出)で顔の位置を見つけて、そこだけ切り抜く。
